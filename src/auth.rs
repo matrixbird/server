@@ -16,8 +16,12 @@ use crate::error::AppserviceError;
 
 use ruma::{
     api::client::{
+        account::register,
         session::login,
         uiaa::UserIdentifier,
+        uiaa::AuthData,
+        uiaa::Dummy,
+        uiaa::Password,
     },
 };
 
@@ -74,6 +78,54 @@ pub async fn login(
         "device_id": resp.device_id,
     })))
 }
+
+
+#[derive(Debug, Deserialize)]
+pub struct SignupRequest {
+    pub username: String,
+    pub password: String,
+}
+
+
+pub async fn signup(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<SignupRequest>,
+) -> Result<impl IntoResponse, AppserviceError> {
+
+    println!("signup request: {:?}", payload);
+
+    let client = ruma::Client::builder()
+        .homeserver_url(state.config.matrix.homeserver.clone())
+        //.access_token(Some(config.appservice.access_token.clone()))
+        .build::<HttpClient>()
+        .await.unwrap();
+
+
+    let mut req = register::v3::Request::new();
+
+    req.username = Some(payload.username.clone());
+    req.password = Some(payload.password.clone());
+
+    let dum = Dummy::new();
+
+    let authdata = AuthData::Dummy(dum);
+
+    req.auth = Some(authdata);
+
+    let resp = client
+        .send_request(req)
+        .await.unwrap();
+
+    println!("register response: {:?}", resp);
+
+
+    Ok(Json(json!({
+        "user_id": resp.user_id,
+        "access_token": resp.access_token,
+        "device_id": resp.device_id,
+    })))
+}
+
 
 #[derive(Debug, Deserialize)]
 pub struct EmailRequest {
