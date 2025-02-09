@@ -31,7 +31,7 @@ use crate::middleware::{
 use crate::ping::ping;
 use crate::ping::hook;
 
-use crate::auth::login;
+use crate::auth::{login, verify_email};
 
 use crate::api::{
     transactions,
@@ -114,6 +114,7 @@ impl Server {
             .nest("/publicRooms", public_rooms_route)
             .route("/hook", post(hook))
             .route("/login", post(login))
+            .route("/email/verify", get(verify_email))
             .route("/", get(index))
             .layer(self.setup_cors(&self.state.config))
             .layer(TraceLayer::new_for_http())

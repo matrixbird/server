@@ -1,6 +1,13 @@
 use regex::Regex;
 use once_cell::sync::Lazy;
 
+use rand::Rng;
+
+pub fn generate_magic_code() -> String {
+    let mut rng = rand::rng();
+    format!("{:06}", rng.random_range(0..1_000_000))
+}
+
 use ruma::{
     RoomId, 
     OwnedRoomId

@@ -1,5 +1,7 @@
 use crate::config::Config;
 
+use crate::utils::generate_magic_code;
+
 use redis::{
     AsyncCommands,
     RedisError
@@ -63,5 +65,25 @@ pub async fn get_cached_room_state(
             e.to_string(),
         ))
     })
+}
+
+pub async fn store_verification_code(
+    conn: &mut redis::aio::MultiplexedConnection,
+    email: String,
+) -> Result<(), RedisError> {
+
+    let code = generate_magic_code();
+
+    conn.set_ex(email, code, 1500).await
+}
+
+pub async fn get_verification_code(
+    conn: &mut redis::aio::MultiplexedConnection,
+    email: &str,
+) -> Result<String, RedisError> {
+
+    let data: String = conn.get(email).await?;
+
+    Ok(data)
 }
 

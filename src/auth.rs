@@ -3,6 +3,7 @@ use axum::{
     response::IntoResponse,
     Json,
 };
+use tracing::{info, warn};
 
 use std::sync::Arc;
 
@@ -23,6 +24,10 @@ use ruma::{
 
 pub type HttpClient = ruma::client::http_client::HyperNativeTls;
 
+use crate::cache::{
+    store_verification_code,
+    get_verification_code
+};
 
 #[derive(Debug, Deserialize)]
 pub struct LoginRequest {
@@ -67,5 +72,39 @@ pub async fn login(
         "user_id": resp.user_id,
         "access_token": resp.access_token,
         "device_id": resp.device_id,
+    })))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct EmailRequest {
+    pub email: String,
+}
+
+pub async fn verify_email(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<EmailRequest>,
+) -> Result<impl IntoResponse, AppserviceError> {
+
+    println!("email request: {:?}", payload);
+
+    let mut redis_conn = state.cache.get_multiplexed_async_connection()
+        .await;
+
+    if let Ok(ref mut redis_conn) = redis_conn {
+
+        if let Err(e) = store_verification_code(
+            redis_conn, 
+            payload.email.clone()
+        ).await {
+            warn!("Failed to store code : {}", e);
+        } else {
+            info!("Stored code for email: {}", payload.email);
+        }
+
+    }
+
+
+    Ok(Json(json!({
+        "sent": "yes"
     })))
 }
