@@ -6,6 +6,7 @@ use std::path::Path;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     pub server: Server,
+    pub db: DB,
     pub appservice: AppService,
     pub matrix: Matrix,
     pub redis: Redis,
@@ -16,6 +17,11 @@ pub struct Config {
 pub struct Server {
     pub port: u16,
     pub allow_origin: Option<Vec<String>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DB {
+    pub url: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

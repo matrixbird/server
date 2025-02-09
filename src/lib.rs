@@ -1,5 +1,6 @@
 pub mod config;
 pub mod appservice;
+pub mod db;
 pub mod server;
 pub mod ping;
 pub mod api;
@@ -18,6 +19,7 @@ pub type ProxyClient = hyper_util::client::legacy::Client<HttpConnector, Body>;
 #[derive(Clone)]
 pub struct AppState {
     pub config: config::Config,
+    pub db: db::Database,
     pub proxy: ProxyClient,
     pub appservice: appservice::AppService,
     pub transaction_store: ping::TransactionStore,
@@ -36,8 +38,11 @@ impl AppState {
 
         let transaction_store = ping::TransactionStore::new();
 
+        let db = db::Database::new(&config).await;
+
         Ok(Arc::new(Self {
             config,
+            db,
             proxy: client,
             appservice,
             transaction_store,
