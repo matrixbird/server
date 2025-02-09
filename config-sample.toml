@@ -1,0 +1,36 @@
+[server]
+port = 8989
+allow_origin = [""]
+
+[appservice]
+id = "commune"
+sender_localpart = "public"
+access_token = "ot2ojahshee4Cee3eem7soTeilieR5pu"
+hs_access_token = "quie5fa5Baeneekah8uxeego5eepae9k"
+
+[appservice.rules]
+auto_join = false
+invite_by_local_user = false
+federation_domain_whitelist = ["matrix.org", "localhost:8481"]
+
+[matrix]
+homeserver = "http://localhost:8080"
+server_name = "localhost:8480"
+
+[redis]
+url = "127.0.0.1:6379"
+pool_size = 20
+timeout_secs = 5
+cache_ttl = 300
+
+[cache.public_rooms]
+enabled = true
+expire_after = 3600
+
+[cache.room_state]
+enabled = true
+expire_after = 3600
+
+[cache.messages]
+enabled = true
+expire_after = 3600

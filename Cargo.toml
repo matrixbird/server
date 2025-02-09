@@ -1,0 +1,29 @@
+[package]
+name = "matrixbird"
+version = "0.1.0"
+authors = ["ChurchOfTheSubgenius <mail@hummingbard.com>"]
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.93"
+axum = "0.7.9"
+chrono = { version = "0.4.39", features = ["serde"] }
+clap = { version = "4.5.23", features = ["derive"] }
+http = "1.1.0"
+hyper = { version = "1.5.1", features = ["full"] }
+hyper-util = { version = "0.1.10", features = ["client", "client-legacy", "http2"] }
+once_cell = "1.20.2"
+redis = { version = "0.27.5", features = ["tokio-comp"] }
+regex = "1.11.1"
+reqwest = { version = "0.12.9", features = ["json"] }
+ruma = { version = "0.11.1", features = ["appservice-api-c", "client-hyper-native-tls", "client-api-c", "client-ext-client-api"] }
+serde = { version = "1.0.215", features = ["derive"] }
+serde_json = "1.0.133"
+thiserror = "2.0.3"
+tokio = { version = "1.41.1", features = ["full"] }
+toml = "0.8.19"
+tower = "0.5.1"
+tower-http = { version = "0.6.2", features = ["cors", "normalize-path", "trace"] }
+tracing = "0.1.40"
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+uuid = { version = "1.11.0", features = ["v4"] }

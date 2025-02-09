@@ -1,0 +1,15 @@
+Description=Commune Public Appservice
+
+After=synapse.service
+
+[Service]
+Type=simple
+WorkingDirectory=/home/commune/appservice
+ExecStart=/home/commune/appservice/target/release/appservice
+--config=/path/to/config.toml
+
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
