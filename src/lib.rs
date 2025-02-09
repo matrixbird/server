@@ -5,6 +5,7 @@ pub mod server;
 pub mod ping;
 pub mod api;
 pub mod rooms;
+pub mod auth;
 pub mod middleware;
 pub mod cache;
 pub mod error;

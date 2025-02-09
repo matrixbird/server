@@ -31,6 +31,8 @@ use crate::middleware::{
 use crate::ping::ping;
 use crate::ping::hook;
 
+use crate::auth::login;
+
 use crate::api::{
     transactions,
     matrix_proxy,
@@ -111,6 +113,7 @@ impl Server {
             .nest("/_matrix/client/v1/rooms/:rood_id", more_room_routes)
             .nest("/publicRooms", public_rooms_route)
             .route("/hook", post(hook))
+            .route("/login", post(login))
             .route("/", get(index))
             .layer(self.setup_cors(&self.state.config))
             .layer(TraceLayer::new_for_http())
@@ -120,6 +123,7 @@ impl Server {
             .layer(app);
 
 
+        /*
         tokio::spawn(async move {
             info!("Pinging homeserver...");
             let txn_id = ping_state.transaction_store.generate_transaction_id().await;
@@ -129,6 +133,7 @@ impl Server {
                 Err(e) => eprintln!("Failed to ping homeserver: {}", e),
             }
         });
+*/
 
         if let Ok(listener) = tokio::net::TcpListener::bind(addr.clone()).await {
             axum::serve(listener, ServiceExt::<Request>::into_make_service(app)).await?;
