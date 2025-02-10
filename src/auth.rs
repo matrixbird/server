@@ -17,11 +17,11 @@ use crate::error::AppserviceError;
 use ruma::{
     api::client::{
         account::register,
+        account::get_username_availability,
         session::login,
         uiaa::UserIdentifier,
         uiaa::AuthData,
         uiaa::Dummy,
-        uiaa::Password,
     },
 };
 
@@ -99,6 +99,17 @@ pub async fn signup(
         //.access_token(Some(config.appservice.access_token.clone()))
         .build::<HttpClient>()
         .await.unwrap();
+
+    let av = get_username_availability::v3::Request::new(
+        payload.username.clone()
+    );
+
+    if let Err(res) = client.send_request(av).await {
+        println!("username availability response: {:?}", res);
+        return Ok(Json(json!({
+            "available": false
+        })))
+    }
 
 
     let mut req = register::v3::Request::new();
