@@ -15,6 +15,13 @@ use crate::AppState;
 use crate::error::AppserviceError;
 
 use ruma::{
+    events::{
+        EmptyStateKey,
+        InitialStateEvent,
+        AnyInitialStateEvent,
+        room::encryption::RoomEncryptionEventContent,
+        room::encryption::InitialRoomEncryptionEvent,
+    },
     api::client::{
         account::register,
         account::get_username_availability,
@@ -143,7 +150,17 @@ pub async fn signup(
 
         let mut req = create_room::v3::Request::new();
 
-        req.name = Some("Test Room".to_string());
+
+        let reec = RoomEncryptionEventContent::new(ruma::EventEncryptionAlgorithm::MegolmV1AesSha2);
+
+        let iree = InitialRoomEncryptionEvent::new(reec);
+
+
+        let aise = iree.to_raw_any();
+        req.initial_state = vec![aise];
+
+
+        req.name = Some("INBOX".to_string());
 
         let alias = format!("{}_{}", username, "INBOX");
         req.room_alias_name = Some(alias);
