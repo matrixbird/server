@@ -1,5 +1,5 @@
 use axum::{
-    extract::State,
+    extract::{State, Path},
     response::IntoResponse,
     Json,
 };
@@ -134,6 +134,34 @@ pub async fn signup(
         "user_id": resp.user_id,
         "access_token": resp.access_token,
         "device_id": resp.device_id,
+    })))
+}
+
+pub async fn username_available(
+    State(state): State<Arc<AppState>>,
+    Path(username): Path<String>,
+) -> Result<impl IntoResponse, AppserviceError> {
+
+    let client = ruma::Client::builder()
+        .homeserver_url(state.config.matrix.homeserver.clone())
+        .build::<HttpClient>()
+        .await.unwrap();
+
+    let av = get_username_availability::v3::Request::new(
+        username.clone()
+    );
+
+    if let Ok(res) = client.send_request(av).await {
+
+        println!("username availability response: {:?}", res);
+
+        return Ok(Json(json!({
+            "available": res.available
+        })))
+    }
+
+    Ok(Json(json!({
+        "available": false
     })))
 }
 

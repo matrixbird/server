@@ -31,7 +31,7 @@ use crate::middleware::{
 use crate::ping::ping;
 use crate::ping::hook;
 
-use crate::auth::{login, signup, verify_email};
+use crate::auth::{login, signup, verify_email, username_available};
 
 use crate::api::{
     transactions,
@@ -107,15 +107,20 @@ impl Server {
             .route("/", get(public_rooms));
             //.route_layer(middleware::from_fn_with_state(self.state.clone(), public_rooms_cache));
 
+        let auth_routes = Router::new()
+            .route("/login", post(login))
+            .route("/signup", post(signup))
+            .route("/username/available/:username", get(username_available))
+            .route("/email/verify", get(verify_email));
+
+
         let app = Router::new()
             .nest("/_matrix/app/v1", service_routes)
             .nest("/_matrix/client/v3/rooms", room_routes)
             .nest("/_matrix/client/v1/rooms/:rood_id", more_room_routes)
             .nest("/publicRooms", public_rooms_route)
             .route("/hook", post(hook))
-            .route("/login", post(login))
-            .route("/signup", post(signup))
-            .route("/email/verify", get(verify_email))
+            .nest("/auth", auth_routes)
             .route("/", get(index))
             .layer(self.setup_cors(&self.state.config))
             .layer(TraceLayer::new_for_http())
