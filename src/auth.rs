@@ -130,10 +130,13 @@ pub async fn signup(
 
     println!("register response: {:?}", resp);
 
-    {
+    let username = payload.username.clone();
+    let access_token = resp.access_token.clone();
+
+    tokio::spawn(async move {
         let client = ruma::Client::builder()
             .homeserver_url(state.config.matrix.homeserver.clone())
-            .access_token(resp.access_token.clone())
+            .access_token(access_token)
             .build::<HttpClient>()
             .await.unwrap();
 
@@ -141,6 +144,10 @@ pub async fn signup(
         let mut req = create_room::v3::Request::new();
 
         req.name = Some("Test Room".to_string());
+
+        let alias = format!("{}_{}", username, "INBOX");
+        req.room_alias_name = Some(alias);
+
         req.preset = Some(create_room::v3::RoomPreset::TrustedPrivateChat);
         req.topic = Some("INBOX".to_string());
 
@@ -152,7 +159,7 @@ pub async fn signup(
             println!("room creation response: {:?}", res);
         }
 
-    }
+    });
 
 
 
