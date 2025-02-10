@@ -18,6 +18,7 @@ use ruma::{
     api::client::{
         account::register,
         account::get_username_availability,
+        room::create_room,
         session::login,
         uiaa::UserIdentifier,
         uiaa::AuthData,
@@ -128,6 +129,32 @@ pub async fn signup(
         .await.unwrap();
 
     println!("register response: {:?}", resp);
+
+    {
+        let client = ruma::Client::builder()
+            .homeserver_url(state.config.matrix.homeserver.clone())
+            .access_token(resp.access_token.clone())
+            .build::<HttpClient>()
+            .await.unwrap();
+
+
+        let mut req = create_room::v3::Request::new();
+
+        req.name = Some("Test Room".to_string());
+        req.preset = Some(create_room::v3::RoomPreset::TrustedPrivateChat);
+        req.topic = Some("INBOX".to_string());
+
+        let appservice_id = *state.appservice.user_id.clone();
+
+        req.invite = vec![appservice_id];
+
+        if let Ok(res) = client.send_request(req).await {
+            println!("room creation response: {:?}", res);
+        }
+
+    }
+
+
 
 
     Ok(Json(json!({
