@@ -9,18 +9,20 @@ use std::sync::Arc;
 
 use serde_json::json;
 
-use serde::Deserialize;
+use serde::{Serialize, Deserialize};
 
 use crate::AppState;
 use crate::error::AppserviceError;
 
 use ruma::{
+    OwnedRoomId,
     events::{
         EmptyStateKey,
         InitialStateEvent,
         AnyInitialStateEvent,
         room::encryption::RoomEncryptionEventContent,
         room::encryption::InitialRoomEncryptionEvent,
+        macros::EventContent,
     },
     api::client::{
         account::register,
@@ -32,7 +34,6 @@ use ruma::{
         uiaa::Dummy,
     },
 };
-
 
 pub type HttpClient = ruma::client::http_client::HyperNativeTls;
 
@@ -85,6 +86,13 @@ pub async fn login(
         "access_token": resp.access_token,
         "device_id": resp.device_id,
     })))
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, EventContent)]
+#[ruma_event(type = "matrixbird.room.type", kind = State, state_key_type = String)]
+pub struct RoomTypeContent {
+    #[serde(rename = "type")]
+    room_type: String,
 }
 
 
@@ -151,13 +159,29 @@ pub async fn signup(
         let mut req = create_room::v3::Request::new();
 
 
+        /*
         let reec = RoomEncryptionEventContent::new(ruma::EventEncryptionAlgorithm::MegolmV1AesSha2);
 
         let iree = InitialRoomEncryptionEvent::new(reec);
 
 
         let aise = iree.to_raw_any();
+
         req.initial_state = vec![aise];
+*/
+
+        let rtc = RoomTypeContent {
+            room_type: "INBOX".to_string()
+        };
+
+        let custom_state_event = InitialStateEvent {
+            content: rtc,
+            state_key: "inbox".to_string(), 
+        };
+
+        let raw_event = custom_state_event.to_raw_any();
+
+        req.initial_state = vec![raw_event];
 
 
         req.name = Some("INBOX".to_string());
