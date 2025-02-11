@@ -5,12 +5,14 @@ use ruma::{
     OwnedEventId,
     OwnedUserId,
     OwnedTransactionId,
+    TransactionId,  
     UserId,
     api::client::{
         appservice::request_ping,
         alias::get_alias,
         account::whoami, 
         membership::joined_rooms, 
+        message::send_message_event,
         state::{
             get_state_events, 
             get_state_events_for_key
@@ -24,6 +26,8 @@ use ruma::{
         space::{get_hierarchy, SpaceHierarchyRoomsChunk}
     },
     events::{
+        AnyMessageLikeEventContent, 
+        MessageLikeEventType,
         AnyTimelineEvent,
         AnyStateEvent, 
         StateEventType,
@@ -316,6 +320,30 @@ impl AppService {
         Some(hierarchy.rooms)
     }
 
+    pub async fn send_message(
+        &self, 
+        event_type: MessageLikeEventType,
+        room_id: OwnedRoomId, 
+        message: ruma::serde::Raw<AnyMessageLikeEventContent>
+    ) 
+    -> Result<OwnedEventId, anyhow::Error> {
+
+        let txn_id = TransactionId::new();
+
+        let req = send_message_event::v3::Request::new_raw(
+            room_id,
+            txn_id,
+            event_type,
+            message,
+        );
+
+        let response = self.client
+            .send_request(req)
+            .await?;
+
+        Ok(response.event_id)
+    }
+
 }
 
 #[derive(Default, Debug, Deserialize, Serialize)]
@@ -332,3 +360,4 @@ pub struct RoomSummary {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub topic: Option<String>,
 }
+

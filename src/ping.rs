@@ -12,7 +12,8 @@ use serde_json::json;
 
 use chrono::{DateTime, Utc};
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+
 
 use crate::AppState;
 use crate::error::AppserviceError;
@@ -20,6 +21,24 @@ use crate::error::AppserviceError;
 use crate::utils::{
     get_localpart,
 };
+
+use ruma::{
+    RoomAliasId,
+    events::{
+        AnyMessageLikeEventContent, 
+        MessageLikeEventType,
+        MessageLikeEventContent,
+        macros::EventContent,
+    }
+};
+
+
+#[derive(Clone, Debug, Deserialize, Serialize, EventContent)]
+#[ruma_event(type = "matrixbird.email", kind = MessageLike)]
+pub struct EmailContent {
+    body: String,
+}
+
 
 #[derive(Debug, Clone)]
 pub struct TransactionStore {
@@ -149,12 +168,58 @@ pub async fn hook(
 
         if let Some(profile) = profile {
             println!("Profile: {:#?}", profile);
+
+
+            let server_name = state.config.matrix.server_name.clone();
+            let raw_alias = format!("#{}_INBOX:{}", user, server_name);
+            println!("Raw Alias: {}", raw_alias);
+
+            if let Ok(alias) = RoomAliasId::parse(&raw_alias) {
+                let id = state.appservice.room_id_from_alias(alias).await;
+                match id {
+                    Some(id) => {
+                        println!("Fetched Room ID: {:#?}", id);
+
+
+
+                        let ev_type = MessageLikeEventType::from("matrixbird.email");
+
+
+
+                        let em_cont = EmailContent{
+                            body: payload.content.text.clone().unwrap_or_else(|| payload.content.html.clone().unwrap_or_else(|| "".to_string())),
+                        };
+
+
+                        let raw_event = ruma::serde::Raw::new(&em_cont)
+                            .map_err(|_| AppserviceError::MatrixError("bad".to_string()))?;
+
+                        let raw = raw_event.cast::<AnyMessageLikeEventContent>();
+
+
+
+                        let re = state.appservice.send_message(
+                            ev_type,
+                            id,
+                            raw
+                        ).await;
+
+                        println!("Send Message: {:#?}", re);
+
+                    }
+                    None => {}
+                }
+            }
+
+
+
         } else {
             return Ok(Json(json!({
                 "action": "reject",
                 "err": "user doesn't exist",
             })))
         }
+
 
     }
 
@@ -163,3 +228,4 @@ pub async fn hook(
         "err": "none",
     })))
 }
+

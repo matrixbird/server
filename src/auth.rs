@@ -24,10 +24,12 @@ use ruma::{
         room::encryption::InitialRoomEncryptionEvent,
         macros::EventContent,
     },
+    room::RoomType as DefaultRoomType, 
     api::client::{
         account::register,
         account::get_username_availability,
         room::create_room,
+        room::create_room::v3::CreationContent,
         session::login,
         uiaa::UserIdentifier,
         uiaa::AuthData,
@@ -183,6 +185,12 @@ pub async fn signup(
 
         req.initial_state = vec![raw_event];
 
+        /* DISABLE space
+        let mut cc = CreationContent::new();
+        cc.room_type = Some(DefaultRoomType::Space);
+        let raw_cc = ruma::serde::Raw::new(&cc).unwrap();
+        req.creation_content = Some(raw_cc);
+        */
 
         req.name = Some("INBOX".to_string());
 

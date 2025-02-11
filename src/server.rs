@@ -130,7 +130,6 @@ impl Server {
             .layer(app);
 
 
-        /*
         tokio::spawn(async move {
             info!("Pinging homeserver...");
             let txn_id = ping_state.transaction_store.generate_transaction_id().await;
@@ -140,7 +139,6 @@ impl Server {
                 Err(e) => eprintln!("Failed to ping homeserver: {}", e),
             }
         });
-*/
 
         if let Ok(listener) = tokio::net::TcpListener::bind(addr.clone()).await {
             axum::serve(listener, ServiceExt::<Request>::into_make_service(app)).await?;

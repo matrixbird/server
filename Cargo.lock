@@ -2043,6 +2043,7 @@ dependencies = [
  "js_int",
  "konst",
  "percent-encoding",
+ "rand 0.8.5",
  "regex",
  "ruma-identifiers-validation",
  "ruma-macros",
@@ -2053,6 +2054,7 @@ dependencies = [
  "time",
  "tracing",
  "url",
+ "uuid",
  "web-time",
  "wildmatch",
 ]
