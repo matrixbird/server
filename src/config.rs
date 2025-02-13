@@ -48,14 +48,22 @@ pub struct Matrix {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Redis {
+    pub session: RedisDB,
+    pub verification_code: RedisDB,
+    pub cache: RedisDB,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RedisDB {
     pub url: String,
     #[serde(default = "default_pool_size")]
     pub pool_size: u32,
     #[serde(default = "default_timeout_secs")]
     pub timeout_secs: u64,
     #[serde(default = "default_cache_ttl")]
-    pub cache_ttl: u64,
+    pub ttl: u64,
 }
+
 
 fn default_pool_size() -> u32 {
     10

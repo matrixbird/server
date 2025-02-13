@@ -15,7 +15,7 @@ pub struct Cache {
 
 impl Cache {
     pub async fn new(config: &Config) -> Result<Self, anyhow::Error> {
-        let url = format!("redis://{}", config.redis.url);
+        let url = format!("redis://{}", config.redis.cache.url);
         let client = redis::Client::open(url)?;
         Ok(Self { client })
     }

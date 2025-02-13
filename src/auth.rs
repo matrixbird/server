@@ -15,21 +15,21 @@ use crate::AppState;
 use crate::error::AppserviceError;
 
 use ruma::{
-    OwnedRoomId,
+    //OwnedRoomId,
     events::{
-        EmptyStateKey,
+        //EmptyStateKey,
         InitialStateEvent,
-        AnyInitialStateEvent,
-        room::encryption::RoomEncryptionEventContent,
-        room::encryption::InitialRoomEncryptionEvent,
+        //AnyInitialStateEvent,
+        //room::encryption::RoomEncryptionEventContent,
+        //room::encryption::InitialRoomEncryptionEvent,
         macros::EventContent,
     },
-    room::RoomType as DefaultRoomType, 
+    //room::RoomType as DefaultRoomType, 
     api::client::{
         account::register,
         account::get_username_availability,
         room::create_room,
-        room::create_room::v3::CreationContent,
+        //room::create_room::v3::CreationContent,
         session::login,
         uiaa::UserIdentifier,
         uiaa::AuthData,
@@ -194,8 +194,7 @@ pub async fn signup(
 
         req.name = Some("INBOX".to_string());
 
-        let alias = format!("{}_{}", username, "INBOX");
-        req.room_alias_name = Some(alias);
+        req.room_alias_name = Some(username);
 
         req.preset = Some(create_room::v3::RoomPreset::TrustedPrivateChat);
         req.topic = Some("INBOX".to_string());

@@ -8,6 +8,7 @@ pub mod rooms;
 pub mod auth;
 pub mod middleware;
 pub mod cache;
+pub mod session;
 pub mod error;
 pub mod utils;
 
@@ -25,6 +26,7 @@ pub struct AppState {
     pub appservice: appservice::AppService,
     pub transaction_store: ping::TransactionStore,
     pub cache: redis::Client,
+    pub session: redis::Client,
 }
 
 impl AppState {
@@ -36,6 +38,7 @@ impl AppState {
         let appservice = appservice::AppService::new(&config).await?;
 
         let cache = cache::Cache::new(&config).await?;
+        let session = session::SessionStore::new(&config).await?;
 
         let transaction_store = ping::TransactionStore::new();
 
@@ -48,6 +51,7 @@ impl AppState {
             appservice,
             transaction_store,
             cache: cache.client,
+            session: session.client,
         }))
     }
 

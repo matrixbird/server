@@ -171,7 +171,7 @@ pub async fn hook(
 
 
             let server_name = state.config.matrix.server_name.clone();
-            let raw_alias = format!("#{}_INBOX:{}", user, server_name);
+            let raw_alias = format!("#{}:{}", user, server_name);
             println!("Raw Alias: {}", raw_alias);
 
             if let Ok(alias) = RoomAliasId::parse(&raw_alias) {
