@@ -255,8 +255,8 @@ pub async fn signup(
 
             return Ok(Json(json!({
                 "session_id": session,
-                "user_id": resp.user_id,
-                "access_token": resp.access_token,
+                //"user_id": resp.user_id,
+                //"access_token": resp.access_token,
                 "device_id": resp.device_id,
             })));
             
@@ -408,6 +408,19 @@ pub async fn validate_session(
 
     Ok(Json(json!({
         "valid": false
+    })))
+}
+
+
+pub async fn request_invite(
+    State(state): State<Arc<AppState>>,
+    Path(email): Path<String>,
+) -> Result<impl IntoResponse, AppserviceError> {
+
+    println!("Request invite for email: {}", email);
+
+    Ok(Json(json!({
+        "sent": true
     })))
 }
 

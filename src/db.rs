@@ -46,3 +46,25 @@ impl Database {
 
     }
 }
+
+#[async_trait::async_trait]
+impl Queries for PgPool {
+    async fn email_exists(&self, email: &str) -> Result<bool, anyhow::Error>{
+        let row = sqlx::query("SELECT EXISTS(SELECT 1 FROM user_threepids WHERE address = $1 and medium='email')")
+            .bind(email)
+            .fetch_one(self)
+            .await?;
+
+        let exists: bool = row.get(0);
+        Ok(exists)
+    }
+
+    async fn add_email(&self, user_id: &str, email: &str) -> Result<(), anyhow::Error> {
+        sqlx::query("INSERT INTO user_threepids (user_id, medium, address, validated_at, added_at) VALUES ($1, 'email' $2, (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT, (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT)")
+            .bind(user_id)
+            .bind(email)
+            .execute(self)
+            .await?;
+        Ok(())
+    }
+}

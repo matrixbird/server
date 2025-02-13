@@ -8,6 +8,7 @@ pub mod rooms;
 pub mod auth;
 pub mod middleware;
 pub mod cache;
+pub mod email;
 pub mod session;
 pub mod error;
 pub mod utils;
@@ -27,6 +28,7 @@ pub struct AppState {
     pub transaction_store: ping::TransactionStore,
     pub cache: redis::Client,
     pub session: session::SessionStore,
+    pub email_providers: email::EmailProviders,
 }
 
 impl AppState {
@@ -44,6 +46,10 @@ impl AppState {
 
         let db = db::Database::new(&config).await;
 
+        let providers = email::EmailProviders::new("providers.json")?;
+
+        let gmail = providers.is_known_email("test@gmail.com");
+
         Ok(Arc::new(Self {
             config,
             db,
@@ -52,6 +58,7 @@ impl AppState {
             transaction_store,
             cache: cache.client,
             session,
+            email_providers: providers,
         }))
     }
 
