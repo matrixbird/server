@@ -2,7 +2,16 @@ use axum::{
     extract::{State, Path},
     response::IntoResponse,
     Json,
+    //body::Body,
+    http::{
+        //Request, 
+        //StatusCode, 
+        //Uri, 
+        //header::AUTHORIZATION,
+        HeaderMap,
+    },
 };
+
 use tracing::{info, warn};
 
 use std::sync::Arc;
@@ -309,6 +318,14 @@ pub async fn verify_email(
     })))
 }
 
+pub fn extract_token(header: &str) -> Option<&str> {
+    if header.starts_with("Bearer ") {
+        Some(header.trim_start_matches("Bearer ").trim())
+    } else {
+        None
+    }
+}
+
 #[derive(Debug, Deserialize)]
 pub struct SessionValidationRequest {
     pub session_id: String,
@@ -317,14 +334,19 @@ pub struct SessionValidationRequest {
 
 pub async fn validate_session(
     State(state): State<Arc<AppState>>,
-    Json(payload): Json<SessionValidationRequest>,
+    headers: HeaderMap,
+    Path(device_id): Path<String>,
 ) -> Result<impl IntoResponse, AppserviceError> {
 
-    println!("session validation request: {:?}", payload);
+    let auth_header = headers.get("Authorization")
+        .and_then(|h| h.to_str().ok())
+        .and_then(|h| h.strip_prefix("Bearer "));
+        
+    let session_id = auth_header.unwrap_or("");
 
 
     if let Ok(Some(session)) = state.session.get_session(
-        &payload.session_id
+        session_id
     ).await{
         println!("Session: {:?}", session);
 
@@ -354,8 +376,8 @@ pub async fn validate_session(
     }
 
     if let Ok(valid) = state.session.validate_session(
-        &payload.session_id,
-        &payload.device_id,
+        session_id,
+        &device_id,
     ).await{
 
         if valid {

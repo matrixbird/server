@@ -110,7 +110,7 @@ impl Server {
         let auth_routes = Router::new()
             .route("/login", post(login))
             .route("/signup", post(signup))
-            .route("/session/validate", post(validate_session))
+            .route("/session/validate/:device_id", get(validate_session))
             .route("/username/available/:username", get(username_available))
             .route("/email/verify", get(verify_email));
 
