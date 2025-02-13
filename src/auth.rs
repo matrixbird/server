@@ -320,26 +320,6 @@ pub async fn validate_session(
     Json(payload): Json<SessionValidationRequest>,
 ) -> Result<impl IntoResponse, AppserviceError> {
 
-    /*
-    let client = ruma::Client::builder()
-        .homeserver_url(state.config.matrix.homeserver.clone())
-        .build::<HttpClient>()
-        .await.unwrap();
-
-    let av = get_username_availability::v3::Request::new(
-        username.clone()
-    );
-
-    if let Ok(res) = client.send_request(av).await {
-
-        println!("username availability response: {:?}", res);
-
-        return Ok(Json(json!({
-            "available": res.available
-        })))
-    }
-*/
-
     println!("session validation request: {:?}", payload);
 
 
@@ -360,6 +340,12 @@ pub async fn validate_session(
             .await.unwrap();
 
         if whoami.user_id.to_string() != session.user {
+            return Ok(Json(json!({
+                "valid": false
+            })))
+        }
+
+        if whoami.device_id != session.device_id {
             return Ok(Json(json!({
                 "valid": false
             })))
