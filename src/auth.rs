@@ -47,6 +47,8 @@ use ruma::{
     },
 };
 
+use crate::utils::construct_matrix_id;
+
 pub type HttpClient = ruma::client::http_client::HyperNativeTls;
 
 use crate::cache::{
@@ -74,7 +76,18 @@ pub async fn login(
         .build::<HttpClient>()
         .await.unwrap();
 
-    let id = UserIdentifier::UserIdOrLocalpart(payload.user.clone());
+
+    let user_id = match construct_matrix_id(&payload.user, &state.config.matrix.server_name) {
+        Some(id) => id,
+        None => {
+            println!("Invalid input");
+            return Ok(Json(json!({
+                "error": "Invalid input"
+            })))
+        }
+    };
+
+    let id = UserIdentifier::UserIdOrLocalpart(user_id);
 
     let pass = login::v3::Password::new(
         id,
@@ -88,7 +101,8 @@ pub async fn login(
         .send_request(login::v3::Request::new(
             info
         ))
-        .await.unwrap();
+        .await
+        .map_err(|_| AppserviceError::AuthenticationError("Invalid credentials".to_string()))?;
 
     println!("Login response: {:?}", resp);
 
@@ -100,7 +114,7 @@ pub async fn login(
 
         return Ok(Json(json!({
             "session_id": session,
-            "user_id": resp.user_id,
+            "device_id": resp.device_id,
         })));
         
     };

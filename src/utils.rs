@@ -70,6 +70,23 @@ pub fn email_to_matrix_id(email: &str) -> Option<String> {
     }
 }
 
+pub fn construct_matrix_id(input: &str, homeserver: &str) -> Option<String> {
+    let input = input.trim();
+    if input.is_empty() {
+        return None;
+    }
+
+    if input.contains('@') {
+        let parts: Vec<&str> = input.split('@').collect();
+        if parts.len() != 2 || parts[0].is_empty() || parts[1].is_empty() {
+            return None;
+        }
+        Some(format!("@{}:{}", parts[0], parts[1]))
+    } else {
+        Some(format!("@{}:{}", input, homeserver))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
