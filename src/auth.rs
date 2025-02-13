@@ -27,6 +27,7 @@ use ruma::{
     //room::RoomType as DefaultRoomType, 
     api::client::{
         account::register,
+        account::whoami,
         account::get_username_availability,
         room::create_room,
         //room::create_room::v3::CreationContent,
@@ -340,6 +341,31 @@ pub async fn validate_session(
 */
 
     println!("session validation request: {:?}", payload);
+
+
+    if let Ok(Some(session)) = state.session.get_session(
+        &payload.session_id
+    ).await{
+        println!("Session: {:?}", session);
+
+
+        let client = ruma::Client::builder()
+            .homeserver_url(state.config.matrix.homeserver.clone())
+            .access_token(Some(session.access_token.clone()))
+            .build::<HttpClient>()
+            .await.unwrap();
+
+        let whoami = client
+            .send_request(whoami::v3::Request::new())
+            .await.unwrap();
+
+        if whoami.user_id.to_string() != session.user {
+            return Ok(Json(json!({
+                "valid": false
+            })))
+        }
+
+    }
 
     if let Ok(valid) = state.session.validate_session(
         &payload.session_id,

@@ -40,6 +40,17 @@ impl SessionStore {
         Ok(session_id)
     }
 
+    pub async fn get_session(&self, session_id: &str) -> Result<Option<Session>, anyhow::Error> {
+        let mut conn = self.client.get_multiplexed_async_connection().await?;
+        if let Some(data) = conn.get::<_, Option<String>>(&session_id).await? {
+            let session: Session = serde_json::from_str(&data)?;
+
+            return Ok(Some(session))
+        }
+
+        Ok(None)
+    }
+
 
     pub async fn validate_session(&self, session_id: &str, device_id: &str) -> Result<bool, anyhow::Error> {
         let mut conn = self.client.get_multiplexed_async_connection().await?;
@@ -84,13 +95,13 @@ impl SessionStore {
 
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Session {
-    user: String,
-    access_token: String,
-    device_id: Option<OwnedDeviceId>,
-    created_at: i64,
-    last_access: i64,
+    pub user: String,
+    pub access_token: String,
+    pub device_id: Option<OwnedDeviceId>,
+    pub created_at: i64,
+    pub last_access: i64,
 }
 
 impl Session {
