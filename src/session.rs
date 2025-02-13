@@ -1,18 +1,14 @@
 use crate::config::Config;
 
-use crate::utils::generate_magic_code;
-
 use serde::{Deserialize, Serialize};
 
 use uuid::Uuid;
 
+use ruma::OwnedDeviceId;
 
+use redis::AsyncCommands;
 
-use redis::{
-    AsyncCommands,
-    RedisError
-};
-
+#[derive(Clone)]
 pub struct SessionStore {
     pub client: redis::Client,
     pub ttl: u64,
@@ -27,11 +23,11 @@ impl SessionStore {
         Ok(Self { client, ttl })
     }
 
-    pub async fn create_session(&self, user_id: String, access_token: String) -> Result<String, anyhow::Error> {
+    pub async fn create_session(&self, user: String, access_token: String, device_id: Option<OwnedDeviceId>) -> Result<String, anyhow::Error> {
 
         let mut conn = self.client.get_multiplexed_async_connection().await?;
         let session_id = Uuid::new_v4().to_string();
-        let session = Session::new(user_id, access_token);
+        let session = Session::new(user, access_token, device_id);
         
         let serialized = serde_json::to_string(&session)?;
         // Store session with TTL
@@ -45,25 +41,37 @@ impl SessionStore {
     }
 
 
-    pub async fn validate_session(&self, session_id: &str) -> Result<Option<Session>, anyhow::Error> {
+    pub async fn validate_session(&self, session_id: &str, device_id: &str) -> Result<bool, anyhow::Error> {
         let mut conn = self.client.get_multiplexed_async_connection().await?;
         // Get session and update last_access
         if let Some(data) = conn.get::<_, Option<String>>(&session_id).await? {
             let mut session: Session = serde_json::from_str(&data)?;
+
+            if session.device_id.is_none() {
+                return Ok(false);
+            }
+
+            if let Some(ref id) = session.device_id {
+                if id.as_str() != device_id {
+                    return Ok(false);
+                }
+            }
+
+
             session.last_access = chrono::Utc::now().timestamp();
 
             let serialized = serde_json::to_string(&session)?;
             
             // Reset TTL and update last_access
             let () = conn.set_ex(
-                &key,
+                session_id,
                 serialized,
                 self.ttl,
             ).await?;
             
-            Ok(Some(session))
+            Ok(true)
         } else {
-            Ok(None)
+            Ok(false)
         }
     }
 
@@ -78,18 +86,20 @@ impl SessionStore {
 
 #[derive(Serialize, Deserialize)]
 pub struct Session {
-    user_id: String,
-    matrix_token: String,
+    user: String,
+    access_token: String,
+    device_id: Option<OwnedDeviceId>,
     created_at: i64,
     last_access: i64,
 }
 
 impl Session {
-    fn new(user_id: String, matrix_token: String) -> Self {
+    fn new(user: String, access_token: String, device_id: Option<OwnedDeviceId>) -> Self {
         let now = chrono::Utc::now().timestamp();
         Self {
-            user_id,
-            matrix_token,
+            user,
+            access_token,
+            device_id,
             created_at: now,
             last_access: now,
         }

@@ -31,7 +31,7 @@ use crate::middleware::{
 use crate::ping::ping;
 use crate::ping::hook;
 
-use crate::auth::{login, signup, verify_email, username_available};
+use crate::auth::{login, signup, verify_email, username_available, validate_session};
 
 use crate::api::{
     transactions,
@@ -110,6 +110,7 @@ impl Server {
         let auth_routes = Router::new()
             .route("/login", post(login))
             .route("/signup", post(signup))
+            .route("/session/validate", post(validate_session))
             .route("/username/available/:username", get(username_available))
             .route("/email/verify", get(verify_email));
 

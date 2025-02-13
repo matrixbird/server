@@ -26,7 +26,7 @@ pub struct AppState {
     pub appservice: appservice::AppService,
     pub transaction_store: ping::TransactionStore,
     pub cache: redis::Client,
-    pub session: redis::Client,
+    pub session: session::SessionStore,
 }
 
 impl AppState {
@@ -51,7 +51,7 @@ impl AppState {
             appservice,
             transaction_store,
             cache: cache.client,
-            session: session.client,
+            session,
         }))
     }
 

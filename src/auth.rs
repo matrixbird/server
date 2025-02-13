@@ -82,11 +82,22 @@ pub async fn login(
 
     println!("Login response: {:?}", resp);
 
+    if let Ok(session) = state.session.create_session(
+        resp.user_id.to_string(),
+        resp.access_token,
+        Some(resp.device_id.clone())
+    ).await{
+
+        return Ok(Json(json!({
+            "session_id": session,
+            "user_id": resp.user_id,
+        })));
+        
+    };
+
 
     Ok(Json(json!({
-        "user_id": resp.user_id,
-        "access_token": resp.access_token,
-        "device_id": resp.device_id,
+        "error": "Could not login."
     })))
 }
 
@@ -150,9 +161,11 @@ pub async fn signup(
     let username = payload.username.clone();
     let access_token = resp.access_token.clone();
 
+    let temp_state = state.clone();
+
     tokio::spawn(async move {
         let client = ruma::Client::builder()
-            .homeserver_url(state.config.matrix.homeserver.clone())
+            .homeserver_url(temp_state.config.matrix.homeserver.clone())
             .access_token(access_token)
             .build::<HttpClient>()
             .await.unwrap();
@@ -199,7 +212,7 @@ pub async fn signup(
         req.preset = Some(create_room::v3::RoomPreset::TrustedPrivateChat);
         req.topic = Some("INBOX".to_string());
 
-        let appservice_id = *state.appservice.user_id.clone();
+        let appservice_id = *temp_state.appservice.user_id.clone();
 
         req.invite = vec![appservice_id];
 
@@ -209,13 +222,26 @@ pub async fn signup(
 
     });
 
+    if let Some(access_token) = resp.access_token.clone() {
+        if let Ok(session) = state.session.create_session(
+            resp.user_id.to_string(),
+            access_token,
+            resp.device_id.clone()
+        ).await{
 
+            return Ok(Json(json!({
+                "session_id": session,
+                "user_id": resp.user_id,
+                "access_token": resp.access_token,
+                "device_id": resp.device_id,
+            })));
+            
+        };
+    }
 
 
     Ok(Json(json!({
-        "user_id": resp.user_id,
-        "access_token": resp.access_token,
-        "device_id": resp.device_id,
+        "error": "Could not register."
     })))
 }
 
@@ -281,3 +307,55 @@ pub async fn verify_email(
         "sent": "yes"
     })))
 }
+
+#[derive(Debug, Deserialize)]
+pub struct SessionValidationRequest {
+    pub session_id: String,
+    pub device_id: String,
+}
+
+pub async fn validate_session(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<SessionValidationRequest>,
+) -> Result<impl IntoResponse, AppserviceError> {
+
+    /*
+    let client = ruma::Client::builder()
+        .homeserver_url(state.config.matrix.homeserver.clone())
+        .build::<HttpClient>()
+        .await.unwrap();
+
+    let av = get_username_availability::v3::Request::new(
+        username.clone()
+    );
+
+    if let Ok(res) = client.send_request(av).await {
+
+        println!("username availability response: {:?}", res);
+
+        return Ok(Json(json!({
+            "available": res.available
+        })))
+    }
+*/
+
+    println!("session validation request: {:?}", payload);
+
+    if let Ok(valid) = state.session.validate_session(
+        &payload.session_id,
+        &payload.device_id,
+    ).await{
+
+        if valid {
+            return Ok(Json(json!({
+                "valid": true,
+            })));
+        }
+        
+    };
+
+    Ok(Json(json!({
+        "valid": false
+    })))
+}
+
