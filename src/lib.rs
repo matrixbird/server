@@ -13,6 +13,8 @@ pub mod session;
 pub mod error;
 pub mod utils;
 
+
+
 use std::sync::Arc;
 use axum::body::Body;
 use hyper_util::{client::legacy::connect::HttpConnector, rt::TokioExecutor};
@@ -47,8 +49,6 @@ impl AppState {
         let db = db::Database::new(&config).await;
 
         let providers = email::EmailProviders::new("providers.json")?;
-
-        let gmail = providers.is_known_email("test@gmail.com");
 
         Ok(Arc::new(Self {
             config,

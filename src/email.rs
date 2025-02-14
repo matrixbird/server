@@ -1,3 +1,5 @@
+extern crate mailchecker;
+
 use std::collections::HashSet;
 use std::fs;
 use serde::Deserialize;
@@ -39,7 +41,13 @@ impl EmailProviders {
     }
     
     /// Check if an email address uses a known provider
-    pub fn is_known_email(&self, email: &str) -> bool {
+    pub fn reject(&self, email: &str) -> bool {
+        let not_disposable = mailchecker::is_valid(email);
+        if !not_disposable {
+            println!("Email is disposable");
+            return true;
+        }
+
         if let Some(provider) = Self::extract_provider(email) {
             self.contains(provider)
         } else {

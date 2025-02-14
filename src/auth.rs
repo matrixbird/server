@@ -358,7 +358,7 @@ pub async fn validate_session(
         
     let session_id = auth_header.unwrap_or("");
 
-    let mut access_token: String = "".to_string();
+    //let mut access_token: String = "".to_string();
 
     if let Ok(Some(session)) = state.session.get_session(
         session_id
@@ -366,6 +366,7 @@ pub async fn validate_session(
         println!("Session: {:?}", session);
 
 
+        /*
         let client = ruma::Client::builder()
             .homeserver_url(state.config.matrix.homeserver.clone())
             .access_token(Some(session.access_token.clone()))
@@ -376,7 +377,7 @@ pub async fn validate_session(
             .send_request(whoami::v3::Request::new())
             .await.unwrap();
 
-        if whoami.user_id.to_string() != session.user {
+        if whoami.user_id.to_string() != session.user_id {
             return Ok(Json(json!({
                 "valid": false
             })))
@@ -388,11 +389,12 @@ pub async fn validate_session(
             })))
         }
 
-        access_token = session.access_token.clone();
+        */
+        //access_token = session.access_token.clone();
 
     }
 
-    if let Ok(valid) = state.session.validate_session(
+    if let Ok((valid, Some(session))) = state.session.validate_session(
         session_id,
         &device_id,
     ).await{
@@ -400,7 +402,8 @@ pub async fn validate_session(
         if valid {
             return Ok(Json(json!({
                 "valid": true,
-                "access_token": access_token
+                "access_token": session.access_token,
+                "user_id": session.user_id,
             })));
         }
         

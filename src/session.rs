@@ -23,11 +23,11 @@ impl SessionStore {
         Ok(Self { client, ttl })
     }
 
-    pub async fn create_session(&self, user: String, access_token: String, device_id: Option<OwnedDeviceId>) -> Result<String, anyhow::Error> {
+    pub async fn create_session(&self, user_id: String, access_token: String, device_id: Option<OwnedDeviceId>) -> Result<String, anyhow::Error> {
 
         let mut conn = self.client.get_multiplexed_async_connection().await?;
         let session_id = Uuid::new_v4().to_string();
-        let session = Session::new(user, access_token, device_id);
+        let session = Session::new(user_id, access_token, device_id);
         
         let serialized = serde_json::to_string(&session)?;
         // Store session with TTL
@@ -52,19 +52,19 @@ impl SessionStore {
     }
 
 
-    pub async fn validate_session(&self, session_id: &str, device_id: &str) -> Result<bool, anyhow::Error> {
+    pub async fn validate_session(&self, session_id: &str, device_id: &str) -> Result<(bool, Option<Session>), anyhow::Error> {
         let mut conn = self.client.get_multiplexed_async_connection().await?;
         // Get session and update last_access
         if let Some(data) = conn.get::<_, Option<String>>(&session_id).await? {
             let mut session: Session = serde_json::from_str(&data)?;
 
             if session.device_id.is_none() {
-                return Ok(false);
+                return Ok((false, None));
             }
 
             if let Some(ref id) = session.device_id {
                 if id.as_str() != device_id {
-                    return Ok(false);
+                    return Ok((false, None));
                 }
             }
 
@@ -80,9 +80,9 @@ impl SessionStore {
                 self.ttl,
             ).await?;
             
-            Ok(true)
+            Ok((true, Some(session)))
         } else {
-            Ok(false)
+            Ok((false, None))
         }
     }
 
@@ -97,7 +97,7 @@ impl SessionStore {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Session {
-    pub user: String,
+    pub user_id: String,
     pub access_token: String,
     pub device_id: Option<OwnedDeviceId>,
     pub created_at: i64,
@@ -105,10 +105,10 @@ pub struct Session {
 }
 
 impl Session {
-    fn new(user: String, access_token: String, device_id: Option<OwnedDeviceId>) -> Self {
+    fn new(user_id: String, access_token: String, device_id: Option<OwnedDeviceId>) -> Self {
         let now = chrono::Utc::now().timestamp();
         Self {
-            user,
+            user_id,
             access_token,
             device_id,
             created_at: now,
