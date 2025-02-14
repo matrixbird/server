@@ -12,6 +12,8 @@ use axum::{
     },
 };
 
+use crate::db::Queries;
+
 use tracing::{info, warn};
 
 use std::sync::Arc;
@@ -137,6 +139,8 @@ pub struct RoomTypeContent {
 pub struct SignupRequest {
     pub username: String,
     pub password: String,
+    pub session: String,
+    pub client_secret: String,
 }
 
 
@@ -181,6 +185,22 @@ pub async fn signup(
         .await.unwrap();
 
     println!("register response: {:?}", resp);
+
+
+    if let Ok(Some(request)) = state.session.get_code_session(
+        payload.session.clone(),
+    ).await {
+
+        if let Ok(()) = state.db.pool.add_email(
+            resp.user_id.clone().as_str(),
+            request.email.clone().as_str()
+        ).await{
+            println!("Added email to user");
+        }
+
+    }
+
+
 
     let username = payload.username.clone();
     let access_token = resp.access_token.clone();
@@ -301,6 +321,7 @@ pub async fn username_available(
 #[derive(Debug, Deserialize)]
 pub struct EmailRequest {
     pub email: String,
+    pub client_secret: String,
 }
 
 pub async fn verify_email(
@@ -310,25 +331,51 @@ pub async fn verify_email(
 
     println!("email request: {:?}", payload);
 
-    let mut redis_conn = state.cache.get_multiplexed_async_connection()
-        .await;
 
-    if let Ok(ref mut redis_conn) = redis_conn {
+    if let Ok(server_session) = state.session.create_verification_code(
+        payload.email.clone(),
+        payload.client_secret.clone()
+    ).await {
 
-        if let Err(e) = store_verification_code(
-            redis_conn, 
-            payload.email.clone()
-        ).await {
-            warn!("Failed to store code : {}", e);
-        } else {
-            info!("Stored code for email: {}", payload.email);
-        }
-
+        return Ok(Json(json!({
+            "session": server_session
+        })))
     }
 
+    Ok(Json(json!({
+        "error": "Could not send verification email."
+    })))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CodeRequest {
+    pub email: String,
+    pub client_secret: String,
+    pub session: String,
+    pub code: String,
+}
+
+pub async fn verify_code(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<CodeRequest>,
+) -> Result<impl IntoResponse, AppserviceError> {
+
+    println!("code verification request: {:?}", payload);
+
+    if let Ok(Some(request)) = state.session.get_code_session(
+        payload.session.clone(),
+    ).await {
+        if request.code == payload.code && 
+            request.client_secret == payload.client_secret &&
+            request.email == payload.email {
+            return Ok(Json(json!({
+                "verified": true
+            })))
+        }
+    }
 
     Ok(Json(json!({
-        "sent": "yes"
+        "error": "Could not verify code."
     })))
 }
 

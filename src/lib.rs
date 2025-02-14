@@ -14,6 +14,7 @@ pub mod error;
 pub mod utils;
 
 
+use db::Queries;
 
 use std::sync::Arc;
 use axum::body::Body;
@@ -47,6 +48,8 @@ impl AppState {
         let transaction_store = ping::TransactionStore::new();
 
         let db = db::Database::new(&config).await;
+
+
 
         let providers = email::EmailProviders::new("providers.json")?;
 

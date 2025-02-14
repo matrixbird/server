@@ -8,6 +8,8 @@ use ruma::OwnedDeviceId;
 
 use redis::AsyncCommands;
 
+use crate::utils::generate_magic_code;
+
 #[derive(Clone)]
 pub struct SessionStore {
     pub client: redis::Client,
@@ -93,7 +95,70 @@ impl SessionStore {
         Ok(())
     }
 
+    pub async fn create_verification_code(&self, email: String, client_secret:String ) -> Result<String, anyhow::Error> {
+
+        let code = generate_magic_code();
+        println!("Verification code: {}", code);
+        let session = Uuid::new_v4().to_string();
+
+        let mut conn = self.client.get_multiplexed_async_connection().await?;
+        let req = VerificationRequest {
+            email,
+            client_secret,
+            code,
+        };
+
+        let serialized = serde_json::to_string(&req)?;
+        
+        // Store session with TTL
+        let () = conn.set_ex(
+            session.clone(),
+            serialized,
+            1800,
+        ).await?;
+        
+        Ok(session)
+    }
+
+    pub async fn verify_code(&self, session: String, email: String, client_secret: String, code: String ) -> Result<bool, anyhow::Error> {
+
+        let mut conn = self.client.get_multiplexed_async_connection().await?;
+        if let Some(data) = conn.get::<_, Option<String>>(&session).await? {
+            let request: VerificationRequest = serde_json::from_str(&data)?;
+            println!("Request: {:#?}", request);
+
+            if request.code == code && 
+                request.client_secret == client_secret &&
+                request.email == email {
+                return Ok(true)
+            }
+
+            return Ok(true)
+        }
+
+        Ok(false)
+    }
+
+    pub async fn get_code_session(&self, session: String) -> Result<Option<VerificationRequest>, anyhow::Error> {
+
+        let mut conn = self.client.get_multiplexed_async_connection().await?;
+        if let Some(data) = conn.get::<_, Option<String>>(&session).await? {
+            let request: VerificationRequest = serde_json::from_str(&data)?;
+            return Ok(Some(request))
+        }
+
+        Ok(None)
+    }
+
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VerificationRequest {
+    pub email: String,
+    pub client_secret: String,
+    pub code: String,
+}
+
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Session {

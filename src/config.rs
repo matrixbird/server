@@ -21,7 +21,8 @@ pub struct Server {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DB {
-    pub url: String,
+    pub matrixbird: String,
+    pub synapse: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -49,7 +50,6 @@ pub struct Matrix {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Redis {
     pub session: RedisDB,
-    pub verification_code: RedisDB,
     pub cache: RedisDB,
 }
 

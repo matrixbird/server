@@ -31,7 +31,15 @@ use crate::middleware::{
 use crate::ping::ping;
 use crate::ping::hook;
 
-use crate::auth::{login, signup, verify_email, username_available, validate_session, request_invite};
+use crate::auth::{
+    login, 
+    signup, 
+    verify_email, 
+    verify_code,
+    username_available, 
+    validate_session, 
+    request_invite
+};
 
 use crate::api::{
     transactions,
@@ -113,7 +121,8 @@ impl Server {
             .route("/request/invite/:email", get(request_invite))
             .route("/session/validate/:device_id", get(validate_session))
             .route("/username/available/:username", get(username_available))
-            .route("/email/verify", get(verify_email));
+            .route("/email/verify", post(verify_email))
+            .route("/code/verify", post(verify_code));
 
 
         let app = Router::new()

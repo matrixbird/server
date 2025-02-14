@@ -1,5 +1,7 @@
 //mod auth;
 //pub use auth::*;
+use chrono::Utc;
+
 
 use sqlx::postgres::{PgPool, PgPoolOptions};
 use sqlx::Row;
@@ -21,7 +23,7 @@ pub trait Queries {
 impl Database {
     pub async fn new(config: &Config) -> Self {
 
-        let db_connection_str = config.db.url.clone();
+        let db_connection_str = config.db.synapse.clone();
 
         let pool = PgPoolOptions::new()
             .max_connections(5)
@@ -60,9 +62,15 @@ impl Queries for PgPool {
     }
 
     async fn add_email(&self, user_id: &str, email: &str) -> Result<(), anyhow::Error> {
-        sqlx::query("INSERT INTO user_threepids (user_id, medium, address, validated_at, added_at) VALUES ($1, 'email' $2, (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT, (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT)")
+
+        let now = Utc::now().timestamp();
+
+        sqlx::query("INSERT INTO user_threepids (user_id, medium, address, validated_at, added_at) VALUES ($1, $2, $3, $4, $5)")
             .bind(user_id)
+            .bind("email")
             .bind(email)
+            .bind(now)
+            .bind(now)
             .execute(self)
             .await?;
         Ok(())
