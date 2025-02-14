@@ -11,6 +11,7 @@ pub struct Config {
     pub matrix: Matrix,
     pub redis: Redis,
     pub cache: Cache,
+    pub features: Features,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -18,6 +19,12 @@ pub struct Server {
     pub port: u16,
     pub allow_origin: Option<Vec<String>>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Features {
+    pub registration_enabled: bool,
+}
+
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DB {

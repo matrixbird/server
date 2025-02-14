@@ -2,10 +2,13 @@ use axum::{
     middleware::{self},
     routing::{get, put, post},
     http::HeaderValue,
-    extract::Request,
+    extract::{Request, State},
+    response::IntoResponse,
+    Json,
     Router,
     ServiceExt
 };
+use serde_json::json;
 
 use std::sync::Arc;
 use tracing::info;
@@ -132,6 +135,7 @@ impl Server {
             .nest("/publicRooms", public_rooms_route)
             .route("/hook", post(hook))
             .nest("/auth", auth_routes)
+            .route("/health", get(health))
             .route("/", get(index))
             .layer(self.setup_cors(&self.state.config))
             .layer(TraceLayer::new_for_http())
@@ -160,6 +164,16 @@ impl Server {
 
         Ok(())
     }
+}
+
+pub async fn health(
+    State(state): State<Arc<AppState>>,
+) -> Result<impl IntoResponse, ()> {
+
+    Ok(Json(json!({
+        "healthy": true,
+        "features": state.config.features,
+    })))
 }
 
 async fn index() -> &'static str {
