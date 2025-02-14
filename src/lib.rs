@@ -31,6 +31,7 @@ pub struct AppState {
     pub transaction_store: ping::TransactionStore,
     pub cache: redis::Client,
     pub session: session::SessionStore,
+    pub email: email::EmailClient,
     pub email_providers: email::EmailProviders,
 }
 
@@ -49,7 +50,10 @@ impl AppState {
 
         let db = db::Database::new(&config).await;
 
-
+        let email_client = email::EmailClient::new(
+            &config.email.api_token,
+            &config.email.account,
+        );
 
         let providers = email::EmailProviders::new("providers.json")?;
 
@@ -61,6 +65,7 @@ impl AppState {
             transaction_store,
             cache: cache.client,
             session,
+            email: email_client,
             email_providers: providers,
         }))
     }

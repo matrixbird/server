@@ -12,6 +12,7 @@ pub struct Config {
     pub redis: Redis,
     pub cache: Cache,
     pub features: Features,
+    pub email: Email,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -25,6 +26,13 @@ pub struct Features {
     pub registration_enabled: bool,
     pub require_verification: bool,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Email {
+    pub api_token: String,
+    pub account: String,
+}
+
 
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

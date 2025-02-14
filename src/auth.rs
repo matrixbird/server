@@ -368,13 +368,21 @@ pub async fn verify_email(
         })))
     }
 
-    if let Ok(server_session) = state.session.create_verification_code(
+    if let Ok((session, code)) = state.session.create_verification_code(
         payload.email.clone(),
         payload.client_secret.clone()
     ).await {
 
+        if let Ok(res) = state.email.send_email(
+            &payload.email,
+            &code
+        ).await{
+            println!("Email sent : {:#?}", res);
+        }
+
+
         return Ok(Json(json!({
-            "session": server_session
+            "session": session
         })))
     }
 

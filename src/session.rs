@@ -95,7 +95,7 @@ impl SessionStore {
         Ok(())
     }
 
-    pub async fn create_verification_code(&self, email: String, client_secret:String ) -> Result<String, anyhow::Error> {
+    pub async fn create_verification_code(&self, email: String, client_secret:String ) -> Result<(String, String), anyhow::Error> {
 
         let code = generate_magic_code();
         println!("Verification code: {}", code);
@@ -105,7 +105,7 @@ impl SessionStore {
         let req = VerificationRequest {
             email,
             client_secret,
-            code,
+            code: code.clone(),
         };
 
         let serialized = serde_json::to_string(&req)?;
@@ -117,7 +117,7 @@ impl SessionStore {
             1800,
         ).await?;
         
-        Ok(session)
+        Ok((session, code))
     }
 
     pub async fn verify_code(&self, session: String, email: String, client_secret: String, code: String ) -> Result<bool, anyhow::Error> {
