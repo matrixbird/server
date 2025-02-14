@@ -71,6 +71,7 @@ pub async fn transactions(
         let room_id = member_event.room_id().to_owned();
         let membership = member_event.membership().to_owned();
         let server_name = member_event.room_id().server_name();
+        let sender = member_event.sender().to_owned();
 
         match server_name {
             Some(server_name) => {
@@ -110,11 +111,32 @@ pub async fn transactions(
                 if let Some(body) = state.templates.get("welcome_matrix.html") {
                     if let Ok(res) = state.appservice.send_welcome_message(
                         room_id,
-                        body.to_string(),
+                        body.clone().to_string(),
                     ).await {
                         println!("Send Welcome Message: {:#?}", res);
                     };
+
+
+
                 }
+
+                if let Some(body) = state.templates.get("welcome_email.html") {
+                    let localpart = sender.localpart().to_owned();
+
+                    let to = format!("{}@matrixbird.com", localpart);
+
+                    let res = state.email.send_email(
+                        &to,
+                        body,
+                        "Welcome to MatrixBird",
+                    ).await;
+
+                    match res {
+                        Ok(r) => println!("Email sent: {:#?}", r),
+                        Err(e) => eprintln!("Error sending email: {}", e),
+                    }
+                }
+
 
 
             }
