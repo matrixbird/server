@@ -513,8 +513,20 @@ pub async fn request_invite(
 
     println!("Request invite for email: {}", email);
 
+    let reject = state.email_providers.reject(
+        email.clone().as_str()
+    ).await;
+
+    if reject {
+        return Ok(Json(json!({
+            "success": false,
+            "error": "Email provider not allowed."
+        })))
+    }
+
+
     Ok(Json(json!({
-        "sent": true
+        "success": true
     })))
 }
 

@@ -57,6 +57,10 @@ impl AppState {
 
         let providers = email::EmailProviders::new("providers.json")?;
 
+        if let Ok(pass) = utils::hash_password("password") {
+            println!("Hashed password: {}", pass);
+        }
+
         Ok(Arc::new(Self {
             config,
             db,

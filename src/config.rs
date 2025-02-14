@@ -25,6 +25,7 @@ pub struct Server {
 pub struct Features {
     pub registration_enabled: bool,
     pub require_verification: bool,
+    pub require_invite_code: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

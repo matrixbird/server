@@ -33,10 +33,9 @@ impl SessionStore {
         
         let serialized = serde_json::to_string(&session)?;
         // Store session with TTL
-        let () = conn.set_ex(
+        let () = conn.set(
             session_id.clone(),
             serialized,
-            self.ttl,
         ).await?;
         
         Ok(session_id)
