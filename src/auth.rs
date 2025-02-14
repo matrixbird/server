@@ -153,6 +153,19 @@ pub async fn signup(
 
     println!("signup request: {:?}", payload);
 
+    if let Ok(None) = state.session.get_code_session(
+        payload.session.clone(),
+    ).await {
+
+        if state.config.features.require_verification {
+            return Ok(Json(json!({
+                "error": "not verified"
+            })))
+        }
+
+    }
+
+
     let client = ruma::Client::builder()
         .homeserver_url(state.config.matrix.homeserver.clone())
         //.access_token(Some(config.appservice.access_token.clone()))
