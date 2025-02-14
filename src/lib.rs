@@ -7,6 +7,7 @@ pub mod api;
 pub mod rooms;
 pub mod auth;
 pub mod middleware;
+pub mod templates;
 pub mod cache;
 pub mod email;
 pub mod session;
@@ -33,6 +34,7 @@ pub struct AppState {
     pub session: session::SessionStore,
     pub email: email::EmailClient,
     pub email_providers: email::EmailProviders,
+    pub templates: templates::EmailTemplates,
 }
 
 impl AppState {
@@ -55,6 +57,9 @@ impl AppState {
             &config.email.account,
         );
 
+        let templates = templates::EmailTemplates::new()?;
+
+
         let providers = email::EmailProviders::new("providers.json")?;
 
         if let Ok(pass) = utils::hash_password("password") {
@@ -71,6 +76,7 @@ impl AppState {
             session,
             email: email_client,
             email_providers: providers,
+            templates,
         }))
     }
 

@@ -65,10 +65,16 @@ struct EmailRequest {
     from: String,
     #[serde(rename = "To")]
     to: String,
+    #[serde(rename = "Subject")]
+    subject: Option<String>,
+    #[serde(rename = "HtmlBody")]
+    html_body: Option<String>,
+    #[serde(rename = "MessageStream")]
+    message_stream: Option<String>,
     #[serde(rename = "TemplateAlias")]
-    template_alias: String,
+    template_alias: Option<String>,
     #[serde(rename = "TemplateModel")]
-    template_model: TemplateModel,
+    template_model: Option<TemplateModel>,
 }
 
 #[derive(Serialize)]
@@ -104,7 +110,7 @@ impl EmailClient {
         }
     }
 
-    pub async fn send_email(
+    pub async fn send_email_template(
         &self,
         to: &str,
         code: &str,
@@ -118,8 +124,11 @@ impl EmailClient {
         let email = EmailRequest {
             from: self.account.to_string(),
             to: to.to_string(),
-            template_alias: "verification-code".to_string(),
-            template_model,
+            template_alias: Some("verification-code".to_string()),
+            template_model: Some(template_model),
+            html_body: None,
+            subject: None,
+            message_stream: None,
         };
 
         let response = client
@@ -136,39 +145,40 @@ impl EmailClient {
         
         Ok(result)
     }
-}
 
-pub async fn send_email(
-    api_token: &str,
-    from: &str,
-    to: &str,
-    code: &str,
-) -> Result<PostmarkResponse> {
-    let client = Client::new();
+    pub async fn send_email(
+        &self,
+        to: &str,
+        template: &str,
+        subject: &str,
+    ) -> Result<PostmarkResponse> {
+        let client = Client::new();
 
-    let template_model = TemplateModel {
-        code: code.to_string(),
-    };
-    
-    let email = EmailRequest {
-        from: from.to_string(),
-        to: to.to_string(),
-        template_alias: "verification-code".to_string(),
-        template_model,
-    };
+        let email = EmailRequest {
+            from: self.account.to_string(),
+            to: to.to_string(),
+            template_alias: None,
+            template_model: None,
+            html_body: Some(template.to_string()),
+            subject: Some(subject.to_string()),
+            message_stream: Some("outbound".to_string()),
+        };
 
-    let response = client
-        .post("https://api.postmarkapp.com/email/withTemplate")
-        .header("Accept", "application/json")
-        .header("Content-Type", "application/json")
-        .header("X-Postmark-Server-Token", api_token)
-        .json(&email)
-        .send()
-        .await?;
+        let response = client
+            .post("https://api.postmarkapp.com/email")
+            .header("Accept", "application/json")
+            .header("Content-Type", "application/json")
+            .header("X-Postmark-Server-Token", &self.api_token)
+            .json(&email)
+            .send()
+            .await?;
 
-    let result = response.json::<PostmarkResponse>().await?;
-    println!("Response: {:#?}", result);
-    
-    Ok(result)
+        println!("Response: {:#?}", response);
+
+        let result = response.json::<PostmarkResponse>().await?;
+        println!("Response: {:#?}", result);
+        
+        Ok(result)
+    }
 }
 

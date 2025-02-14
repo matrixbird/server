@@ -40,7 +40,7 @@ pub async fn transactions(
     };
 
     for event in events {
-        println!("Event: {:#?}", event);
+        //println!("Event: {:#?}", event);
 
         // If auto-join is enabled, join rooms with world_readable history visibility
         if state.config.appservice.rules.auto_join {
@@ -66,7 +66,7 @@ pub async fn transactions(
             continue;
         };
 
-        print!("Member Event: {:#?}", member_event);
+        //print!("Member Event: {:#?}", member_event);
 
         let room_id = member_event.room_id().to_owned();
         let membership = member_event.membership().to_owned();
@@ -105,7 +105,18 @@ pub async fn transactions(
         match membership {
             MembershipState::Invite => {
                 info!("Joining room: {}", room_id);
-                state.appservice.join_room(room_id).await;
+                state.appservice.join_room(room_id.clone()).await;
+
+                if let Some(body) = state.templates.get("welcome_matrix.html") {
+                    if let Ok(res) = state.appservice.send_welcome_message(
+                        room_id,
+                        body.to_string(),
+                    ).await {
+                        println!("Send Welcome Message: {:#?}", res);
+                    };
+                }
+
+
             }
             MembershipState::Leave => {
                 info!("Left room: {}", room_id);

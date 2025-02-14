@@ -44,6 +44,8 @@ use anyhow;
 
 use serde::{Serialize, Deserialize};
 
+use crate::ping::EmailContent;
+
 pub type HttpClient = ruma::client::http_client::HyperNativeTls;
 
 #[derive(Clone)]
@@ -335,6 +337,40 @@ impl AppService {
             txn_id,
             event_type,
             message,
+        );
+
+        let response = self.client
+            .send_request(req)
+            .await?;
+
+        Ok(response.event_id)
+    }
+
+    pub async fn send_welcome_message(
+        &self, 
+        room_id: OwnedRoomId, 
+        body: String,
+    ) 
+    -> Result<OwnedEventId, anyhow::Error> {
+
+        let ev_type = MessageLikeEventType::from("matrixbird.email");
+
+        let em_cont = EmailContent{
+            body,
+        };
+
+        let raw_event = ruma::serde::Raw::new(&em_cont)?;
+
+        let raw = raw_event.cast::<AnyMessageLikeEventContent>();
+
+
+        let txn_id = TransactionId::new();
+
+        let req = send_message_event::v3::Request::new_raw(
+            room_id,
+            txn_id,
+            ev_type,
+            raw,
         );
 
         let response = self.client

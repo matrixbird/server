@@ -36,7 +36,7 @@ use ruma::{
 #[derive(Clone, Debug, Deserialize, Serialize, EventContent)]
 #[ruma_event(type = "matrixbird.email", kind = MessageLike)]
 pub struct EmailContent {
-    body: String,
+    pub body: String,
 }
 
 
