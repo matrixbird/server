@@ -12,6 +12,8 @@ use axum::{
     },
 };
 
+use uuid::Uuid;
+
 use crate::db::Queries;
 
 use tracing::{info, warn};
@@ -331,6 +333,27 @@ pub async fn verify_email(
 
     println!("email request: {:?}", payload);
 
+    if let Ok(exists) = state.db.pool.email_exists(
+        payload.email.clone().as_str()
+    ).await{
+        if exists {
+            let session_id = Uuid::new_v4().to_string();
+            return Ok(Json(json!({
+                "session": session_id
+            })))
+        }
+    }
+
+    let reject = state.email_providers.reject(
+        payload.email.clone().as_str()
+    ).await;
+
+    if reject {
+        return Ok(Json(json!({
+            "reject": true,
+            "error": "Email provider not allowed."
+        })))
+    }
 
     if let Ok(server_session) = state.session.create_verification_code(
         payload.email.clone(),

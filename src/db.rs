@@ -18,6 +18,7 @@ pub struct Database {
 pub trait Queries {
     async fn email_exists(&self, email: &str) -> Result<bool, anyhow::Error>;
     async fn add_email(&self, user_id: &str, email: &str) -> Result<(), anyhow::Error>;
+    async fn get_user_id_from_email(&self, email: &str) -> Result<Option<String>, anyhow::Error>;
 }
 
 impl Database {
@@ -74,5 +75,15 @@ impl Queries for PgPool {
             .execute(self)
             .await?;
         Ok(())
+    }
+
+    async fn get_user_id_from_email(&self, email: &str) -> Result<Option<String>, anyhow::Error> {
+
+        let row = sqlx::query("SELECT user_id FROM user_threepids WHERE address = $1 and medium='email';")
+            .bind(email)
+            .fetch_one(self)
+            .await?;
+
+        Ok(row.try_get("user_id").ok())
     }
 }

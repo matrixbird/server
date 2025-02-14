@@ -41,7 +41,7 @@ impl EmailProviders {
     }
     
     /// Check if an email address uses a known provider
-    pub fn reject(&self, email: &str) -> bool {
+    pub async fn reject(&self, email: &str) -> bool {
         let not_disposable = mailchecker::is_valid(email);
         if !not_disposable {
             println!("Email is disposable");
