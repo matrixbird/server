@@ -590,3 +590,25 @@ pub async fn request_invite(
     })))
 }
 
+pub async fn validate_invite_code(
+    State(state): State<Arc<AppState>>,
+    Path(code): Path<String>,
+) -> Result<impl IntoResponse, AppserviceError> {
+
+    println!("Validating invite code: {}", code);
+
+    if let Ok(Some(email)) = state.db.matrixbird.get_invite_code_email(
+        &code
+    ).await{
+        println!("Email is: {}", email);
+        return Ok(Json(json!({
+            "valid": true,
+            "email": email
+        })))
+    }
+
+    Ok(Json(json!({
+        "valid": false
+    })))
+}
+

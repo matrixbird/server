@@ -41,7 +41,8 @@ use crate::auth::{
     verify_code,
     username_available, 
     validate_session, 
-    request_invite
+    request_invite,
+    validate_invite_code
 };
 
 use crate::api::{
@@ -121,6 +122,7 @@ impl Server {
         let auth_routes = Router::new()
             .route("/login", post(login))
             .route("/signup", post(signup))
+            .route("/code/validate/:code", get(validate_invite_code))
             .route("/request/invite/:email", get(request_invite))
             .route("/session/validate/:device_id", get(validate_session))
             .route("/username/available/:username", get(username_available))
