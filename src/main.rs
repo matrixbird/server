@@ -7,6 +7,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use crate::AppState;
 
+
 #[tokio::main]
 async fn main() {
 
@@ -23,15 +24,26 @@ async fn main() {
             std::process::exit(1);
         });
 
-    info!("Starting Commune public appservice...");
+    match args.command {
+        Some(Command::SendEmails { dry_run }) => {
+            println!("Sending test emails... {}", dry_run);
+        }
+        Some(Command::Migrate) => {
+            println!("Running database migrations...");
+        }
+        None => {
+            info!("Starting Commune public appservice...");
 
-    Server::new(state)
-    .run()
-    .await 
-    .unwrap_or_else(|e| {
-        eprintln!("Server error: {}", e);
-        std::process::exit(1);
-    }); 
+            Server::new(state)
+            .run()
+            .await 
+            .unwrap_or_else(|e| {
+                eprintln!("Server error: {}", e);
+                std::process::exit(1);
+            }); 
+        }
+    }
+
 
 }
 

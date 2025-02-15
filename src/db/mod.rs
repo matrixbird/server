@@ -3,7 +3,8 @@
 use chrono::Utc;
 
 
-use sqlx::postgres::{PgPool, PgPoolOptions};
+use sqlx::postgres::{PgPool, PgPoolOptions, PgConnectOptions};
+use sqlx::ConnectOptions;
 use sqlx::Row;
 use std::process;
 
@@ -11,7 +12,8 @@ use crate::config::Config;
 
 #[derive(Clone)]
 pub struct Database {
-    pub pool: PgPool,
+    pub synapse: PgPool,
+    pub matrixbird: PgPool,
 }
 
 #[async_trait::async_trait]
@@ -20,20 +22,24 @@ pub trait Queries {
     async fn add_email(&self, user_id: &str, email: &str) -> Result<(), anyhow::Error>;
     async fn get_user_id_from_email(&self, email: &str) -> Result<Option<String>, anyhow::Error>;
     async fn get_email_from_user_id(&self, user_id: &str) -> Result<Option<String>, anyhow::Error>;
+    async fn add_invite(&self, email: &str, code: &str) -> Result<(), anyhow::Error>;
 }
 
 impl Database {
     pub async fn new(config: &Config) -> Self {
 
-        let db_connection_str = config.db.synapse.clone();
+        let synapse_db: PgPool;
+        let mut opts: PgConnectOptions = config.db.synapse.clone().parse().unwrap();
+        opts = opts.log_statements(log::LevelFilter::Trace);
 
         let pool = PgPoolOptions::new()
-            .max_connections(5)
-            .connect(&db_connection_str)
+            .max_connections(20)
+            .min_connections(2)
+            .connect_with(opts)
             .await;
 
         match pool {
-            Ok(pool) => Self { pool },
+            Ok(pool) => synapse_db = pool,
             Err(e) => {
                 eprintln!("Database Error:\n");
                 // Print the error with full context
@@ -46,6 +52,38 @@ impl Database {
                 eprintln!("\nSymposium cannot start without a valid database connection.");
                 process::exit(1);
             }
+        }
+
+        let matrixbird_db: PgPool;
+        let mut opts: PgConnectOptions = config.db.matrixbird.clone().parse().unwrap();
+        opts = opts.log_statements(log::LevelFilter::Trace);
+
+
+        let pool = PgPoolOptions::new()
+            .max_connections(5)
+            .min_connections(1)
+            .connect_with(opts)
+            .await;
+
+        match pool {
+            Ok(pool) => matrixbird_db = pool,
+            Err(e) => {
+                eprintln!("Database Error:\n");
+                // Print the error with full context
+                let mut error: &dyn std::error::Error = &e;
+                eprintln!("Error: {}", error);
+                while let Some(source) = error.source() {
+                    eprintln!("Caused by: {}", source);
+                    error = source;
+                }
+                eprintln!("\nSymposium cannot start without a valid database connection.");
+                process::exit(1);
+            }
+        }
+
+        Self {
+            synapse: synapse_db,
+            matrixbird: matrixbird_db,
         }
 
     }
@@ -97,4 +135,26 @@ impl Queries for PgPool {
 
         Ok(row.try_get("address").ok())
     }
+
+    async fn add_invite(&self, email: &str, code: &str) -> Result<(), anyhow::Error> {
+
+        sqlx::query!(
+            r#"
+            INSERT INTO invites (email, code)
+            VALUES ($1, $2)
+            ON CONFLICT (email) 
+            DO UPDATE SET 
+                code = EXCLUDED.code,
+                created_at = CURRENT_TIMESTAMP
+            WHERE invites.activated = false
+            "#,
+            email,
+            code
+        )
+        .execute(self)
+        .await?;
+
+        Ok(())
+    }
+
 }

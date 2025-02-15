@@ -15,8 +15,6 @@ pub mod error;
 pub mod utils;
 
 
-use db::Queries;
-
 use std::sync::Arc;
 use axum::body::Body;
 use hyper_util::{client::legacy::connect::HttpConnector, rt::TokioExecutor};
@@ -62,10 +60,6 @@ impl AppState {
 
         let providers = email::EmailProviders::new("providers.json")?;
 
-        if let Ok(pass) = utils::hash_password("password") {
-            println!("Hashed password: {}", pass);
-        }
-
         Ok(Arc::new(Self {
             config,
             db,
@@ -86,7 +80,7 @@ impl AppState {
     }
 }
 
-use clap::Parser;
+use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
 pub struct Args {
@@ -94,6 +88,19 @@ pub struct Args {
     pub config: std::path::PathBuf,
     #[arg(short, long, default_value = "8989")]
     pub port: u16,
+    #[command(subcommand)]
+    pub command: Option<Command>,
+}
+
+#[derive(Subcommand)]
+pub enum Command {
+    /// Send test emails
+    SendEmails {
+        #[arg(long)]
+        dry_run: bool,
+    },
+    /// Run database migrations
+    Migrate,
 }
 
 impl Args {

@@ -16,7 +16,7 @@ use uuid::Uuid;
 
 use crate::db::Queries;
 
-use tracing::{info, warn};
+//use tracing::{info, warn};
 
 use std::sync::Arc;
 
@@ -40,7 +40,7 @@ use ruma::{
     //room::RoomType as DefaultRoomType, 
     api::client::{
         account::register,
-        account::whoami,
+        //account::whoami,
         account::get_username_availability,
         room::create_room,
         //room::create_room::v3::CreationContent,
@@ -51,14 +51,15 @@ use ruma::{
     },
 };
 
-use crate::utils::construct_matrix_id;
+use crate::utils::{
+    construct_matrix_id,
+    //generate_magic_code,
+    generate_invite_code
+};
+
 
 pub type HttpClient = ruma::client::http_client::HyperNativeTls;
 
-use crate::cache::{
-    store_verification_code,
-    get_verification_code
-};
 
 #[derive(Debug, Deserialize)]
 pub struct LoginRequest {
@@ -206,7 +207,7 @@ pub async fn signup(
         payload.session.clone(),
     ).await {
 
-        if let Ok(()) = state.db.pool.add_email(
+        if let Ok(()) = state.db.synapse.add_email(
             resp.user_id.clone().as_str(),
             request.email.clone().as_str()
         ).await{
@@ -346,7 +347,7 @@ pub async fn verify_email(
 
     println!("email request: {:?}", payload);
 
-    if let Ok(exists) = state.db.pool.email_exists(
+    if let Ok(exists) = state.db.synapse.email_exists(
         payload.email.clone().as_str()
     ).await{
         if exists {
@@ -522,6 +523,13 @@ pub async fn request_invite(
             "success": false,
             "error": "Email provider not allowed."
         })))
+    }
+
+    if let Ok(()) = state.db.matrixbird.add_invite(
+        email.clone().as_str(),
+        generate_invite_code().as_str()
+    ).await{
+        println!("Stored user invite");
     }
 
 

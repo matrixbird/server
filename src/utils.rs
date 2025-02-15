@@ -2,8 +2,9 @@ use regex::Regex;
 use once_cell::sync::Lazy;
 
 use rand::Rng;
+use rand::distr::Alphanumeric;
 
-use bcrypt::{hash, DEFAULT_COST};
+use bcrypt::hash;
 
 pub fn hash_password(password: &str) -> Result<String, bcrypt::BcryptError> {
     hash(password.as_bytes(), 10)
@@ -13,6 +14,32 @@ pub fn hash_password(password: &str) -> Result<String, bcrypt::BcryptError> {
 pub fn generate_magic_code() -> String {
     let mut rng = rand::rng();
     format!("{:06}", rng.random_range(0..1_000_000))
+}
+
+pub fn generate_string(length: usize) -> String {
+    rand::rng()
+        .sample_iter(&Alphanumeric)
+        .take(length)
+        .map(char::from)
+        .collect::<String>()
+        .to_uppercase()
+}
+
+pub fn generate_invite_code() -> String {
+    let first = rand::rng()
+        .sample_iter(&Alphanumeric)
+        .take(5)
+        .map(char::from)
+        .collect::<String>()
+        .to_uppercase();
+    let second = rand::rng()
+        .sample_iter(&Alphanumeric)
+        .take(5)
+        .map(char::from)
+        .collect::<String>()
+        .to_uppercase();
+
+    format!("{}-{}", first, second)
 }
 
 use ruma::{

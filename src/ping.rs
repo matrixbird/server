@@ -27,7 +27,7 @@ use ruma::{
     events::{
         AnyMessageLikeEventContent, 
         MessageLikeEventType,
-        MessageLikeEventContent,
+        //MessageLikeEventContent,
         macros::EventContent,
     }
 };
