@@ -32,7 +32,7 @@ async fn main() {
             println!("Running database migrations...");
         }
         None => {
-            info!("Starting Commune public appservice...");
+            info!("Starting Matrixbird server...");
 
             Server::new(state)
             .run()

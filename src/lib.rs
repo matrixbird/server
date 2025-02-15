@@ -14,6 +14,8 @@ pub mod session;
 pub mod error;
 pub mod utils;
 
+use db::Queries;
+
 
 use std::sync::Arc;
 use axum::body::Body;
@@ -49,6 +51,13 @@ impl AppState {
         let transaction_store = ping::TransactionStore::new();
 
         let db = db::Database::new(&config).await;
+
+                if let Err(e) = db.matrixbird.activate_invite_code(
+                    "sup@sup.com",
+                    "FX4NY-MCLGI"
+                ).await{
+                    println!("Could not activate invite code: {:?}", e);
+                }
 
         let email_client = email::EmailClient::new(
             &config.email.api_token,

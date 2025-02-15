@@ -144,6 +144,7 @@ pub struct SignupRequest {
     pub password: String,
     pub session: String,
     pub client_secret: String,
+    pub invite_code: Option<String>,
 }
 
 
@@ -153,6 +154,38 @@ pub async fn signup(
 ) -> Result<impl IntoResponse, AppserviceError> {
 
     println!("signup request: {:?}", payload);
+
+    let mut invite_email: Option<String> = None;
+
+    if state.config.features.require_invite_code {
+        match payload.invite_code.clone() {
+            Some(code) => {
+
+                println!("Invite code: {}", code);
+
+                if let Ok(Some(email)) = state.db.matrixbird.get_invite_code_email(
+                    &code
+                ).await{
+                    println!("Email is: {}", email);
+                    invite_email = Some(email);
+                } else {
+                    println!("Invite code not found");
+                    return Ok(Json(json!({
+                        "invited": false,
+                        "error": "Invite code required"
+                    })))
+                }
+
+
+            },
+            None => {
+                return Ok(Json(json!({
+                    "invited": false,
+                    "error": "Invite code required"
+                })))
+            }
+        }
+    }
 
     if let Ok(None) = state.session.get_code_session(
         payload.session.clone(),
@@ -214,6 +247,25 @@ pub async fn signup(
             println!("Added email to user");
         }
 
+    }
+
+    match invite_email {
+        Some(email) => {
+            if let Ok(()) = state.db.synapse.add_email(
+                resp.user_id.clone().as_str(),
+                &email
+            ).await{
+                println!("Added email to user");
+
+                if let Err(_) = state.db.matrixbird.activate_invite_code(
+                    &email,
+                    &payload.invite_code.clone().unwrap()
+                ).await{
+                    println!("Could not activate invite code");
+                }
+            }
+        },
+        None => {}
     }
 
 

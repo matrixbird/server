@@ -23,6 +23,8 @@ pub trait Queries {
     async fn get_user_id_from_email(&self, email: &str) -> Result<Option<String>, anyhow::Error>;
     async fn get_email_from_user_id(&self, user_id: &str) -> Result<Option<String>, anyhow::Error>;
     async fn add_invite(&self, email: &str, code: &str) -> Result<(), anyhow::Error>;
+    async fn get_invite_code_email(&self, code: &str) -> Result<Option<String>, anyhow::Error>;
+    async fn activate_invite_code(&self, email: &str, code: &str) -> Result<(), anyhow::Error>;
 }
 
 impl Database {
@@ -148,6 +150,38 @@ impl Queries for PgPool {
                 created_at = CURRENT_TIMESTAMP
             WHERE invites.activated = false
             "#,
+            email,
+            code
+        )
+        .execute(self)
+        .await?;
+
+        Ok(())
+    }
+
+    async fn get_invite_code_email(&self, code: &str) -> Result<Option<String>, anyhow::Error> {
+
+        let row = sqlx::query("SELECT email FROM invites WHERE code = $1 and activated = false and invite_sent = true;")
+            .bind(code)
+            .fetch_one(self)
+            .await?;
+
+        Ok(row.try_get("email").ok())
+    }
+
+    async fn activate_invite_code(&self, email: &str, code: &str) -> Result<(), anyhow::Error> {
+
+        let now = sqlx::types::time::OffsetDateTime::now_utc();
+
+        println!("Activating invite code: {} for email: {}", code, email);
+
+        sqlx::query!(
+            r#"
+            UPDATE invites
+            SET activated = true, activated_at = $1
+            WHERE email = $2 and code = $3
+            "#,
+            now,
             email,
             code
         )
