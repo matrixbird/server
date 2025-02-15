@@ -27,7 +27,7 @@ reqwest = { version = "0.12.9", features = ["json"] }
 ruma = { version = "0.11.1", features = ["appservice-api-c", "client-hyper-native-tls", "client-api-c", "client-ext-client-api", "rand", "unstable-exhaustive-types"] }
 serde = { version = "1.0.215", features = ["derive"] }
 serde_json = "1.0.133"
-sqlx = { version = "0.8.3", features = ["runtime-tokio", "postgres", "time", "chrono"] }
+sqlx = { version = "0.8.3", features = ["runtime-tokio", "postgres", "time", "chrono", "tls-native-tls"] }
 tera = "1.20.0"
 thiserror = "2.0.3"
 tokio = { version = "1.41.1", features = ["full"] }
