@@ -428,7 +428,8 @@ pub async fn verify_email(
 
         if let Ok(res) = state.email.send_email_template(
             &payload.email,
-            &code
+            &code,
+            "verification-code"
         ).await{
             println!("Email sent : {:#?}", res);
         }

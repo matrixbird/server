@@ -57,6 +57,7 @@ impl EmailClient {
         &self,
         to: &str,
         code: &str,
+        alias: &str,
     ) -> Result<PostmarkResponse> {
         let client = Client::new();
 
@@ -67,7 +68,7 @@ impl EmailClient {
         let email = EmailRequest {
             from: self.account.to_string(),
             to: to.to_string(),
-            template_alias: Some("verification-code".to_string()),
+            template_alias: Some(alias.to_string()),
             template_model: Some(template_model),
             html_body: None,
             subject: None,

@@ -247,15 +247,35 @@ pub struct InviteRequest {
     pub return_path: Option<String>,
 }
 
+use crate::utils::generate_invite_code;
+
+use crate::db::Queries;
+
 pub async fn invite_hook(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<InviteRequest>,
 ) -> Result<impl IntoResponse, AppserviceError> {
 
     println!("INVITE email");
-    println!("INVITE email");
-    println!("INVITE email");
     println!("To: {:#?}", payload);
+
+    let code = generate_invite_code();
+
+    if let Ok(()) = state.db.matrixbird.add_invite(
+        payload.envelope_from.clone().as_str(),
+        code.clone().as_str()
+    ).await{
+        println!("Stored user invite");
+    }
+
+    if let Ok(res) = state.email.send_email_template(
+        &payload.envelope_from,
+        &code,
+        "invite"
+    ).await{
+        println!("Email sent : {:#?}", res);
+    }
+
 
     Ok(Json(json!({
         "action": "accept",
