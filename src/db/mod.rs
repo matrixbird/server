@@ -32,7 +32,7 @@ impl Database {
 
         let synapse_db: PgPool;
         let mut opts: PgConnectOptions = config.db.synapse.clone().parse().unwrap();
-        opts = opts.log_statements(log::LevelFilter::Trace);
+        opts = opts.log_statements(log::LevelFilter::Debug);
 
         let pool = PgPoolOptions::new()
             .max_connections(20)
@@ -58,7 +58,7 @@ impl Database {
 
         let matrixbird_db: PgPool;
         let mut opts: PgConnectOptions = config.db.matrixbird.clone().parse().unwrap();
-        opts = opts.log_statements(log::LevelFilter::Trace);
+        opts = opts.log_statements(log::LevelFilter::Debug);
 
 
         let pool = PgPoolOptions::new()
@@ -140,21 +140,11 @@ impl Queries for PgPool {
 
     async fn add_invite(&self, email: &str, code: &str) -> Result<(), anyhow::Error> {
 
-        sqlx::query!(
-            r#"
-            INSERT INTO invites (email, code)
-            VALUES ($1, $2)
-            ON CONFLICT (email) 
-            DO UPDATE SET 
-                code = EXCLUDED.code,
-                created_at = CURRENT_TIMESTAMP
-            WHERE invites.activated = false
-            "#,
-            email,
-            code
-        )
-        .execute(self)
-        .await?;
+        sqlx::query("INSERT INTO invites (email, code) VALUES ($1, $2);")
+            .bind(email)
+            .bind(code)
+            .execute(self)
+            .await?;
 
         Ok(())
     }
@@ -175,18 +165,12 @@ impl Queries for PgPool {
 
         println!("Activating invite code: {} for email: {}", code, email);
 
-        sqlx::query!(
-            r#"
-            UPDATE invites
-            SET activated = true, activated_at = $1
-            WHERE email = $2 and code = $3
-            "#,
-            now,
-            email,
-            code
-        )
-        .execute(self)
-        .await?;
+        sqlx::query("UPDATE invites SET activated = true, activated_at = $1 WHERE email = $2 and code = $3;")
+            .bind(now)
+            .bind(email)
+            .bind(code)
+            .execute(self)
+            .await?;
 
         Ok(())
     }

@@ -138,8 +138,7 @@ impl Server {
             .route("/hook/invite", post(invite_hook))
             .route("/hook", post(hook))
             .nest("/auth", auth_routes)
-            .route("/health", get(health))
-            .route("/", get(index))
+            .route("/", get(health))
             .layer(self.setup_cors(&self.state.config))
             .layer(TraceLayer::new_for_http())
             .with_state(self.state.clone());
@@ -178,10 +177,4 @@ pub async fn health(
         "features": state.config.features,
     })))
 }
-
-async fn index() -> &'static str {
-    info!("hello");
-    "Matrix public appservice.\n"
-}
-
 
