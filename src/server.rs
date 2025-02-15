@@ -32,7 +32,7 @@ use crate::middleware::{
 };
 
 use crate::ping::ping;
-use crate::ping::hook;
+use crate::ping::{invite_hook, hook};
 
 use crate::auth::{
     login, 
@@ -133,6 +133,7 @@ impl Server {
             .nest("/_matrix/client/v3/rooms", room_routes)
             .nest("/_matrix/client/v1/rooms/:rood_id", more_room_routes)
             .nest("/publicRooms", public_rooms_route)
+            .route("/hook/invite", post(invite_hook))
             .route("/hook", post(hook))
             .nest("/auth", auth_routes)
             .route("/health", get(health))

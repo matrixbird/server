@@ -157,6 +157,12 @@ pub async fn hook(
     if let Some((user, tag)) = get_localpart(&payload.envelope_to) {
         println!("localpart is: {}", user);
 
+        if user == "postmaster" {
+            return Ok(Json(json!({
+                "action": "accept",
+            })))
+        }
+
         if let Some(tag) = tag {
             println!("Tag: {}", tag);
         }
@@ -222,6 +228,34 @@ pub async fn hook(
 
 
     }
+
+    Ok(Json(json!({
+        "action": "accept",
+        "err": "none",
+    })))
+}
+
+
+#[derive(Debug, Deserialize)]
+pub struct InviteRequest {
+    pub message_id: String,
+    pub envelope_from: String,
+    pub envelope_to: String,
+    pub from: Address,
+    pub to: Vec<Address>,
+    pub subject: Option<String>,
+    pub return_path: Option<String>,
+}
+
+pub async fn invite_hook(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<InviteRequest>,
+) -> Result<impl IntoResponse, AppserviceError> {
+
+    println!("INVITE email");
+    println!("INVITE email");
+    println!("INVITE email");
+    println!("To: {:#?}", payload);
 
     Ok(Json(json!({
         "action": "accept",
