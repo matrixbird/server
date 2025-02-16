@@ -503,15 +503,15 @@ pub async fn validate_session(
         
     let session_id = auth_header.unwrap_or("");
 
-    //let mut access_token: String = "".to_string();
 
+    /*
+    //let mut access_token: String = "".to_string();
     if let Ok(Some(session)) = state.session.get_session(
         session_id
     ).await{
         println!("Session: {:?}", session);
 
 
-        /*
         let client = ruma::Client::builder()
             .homeserver_url(state.config.matrix.homeserver.clone())
             .access_token(Some(session.access_token.clone()))
@@ -534,15 +534,35 @@ pub async fn validate_session(
             })))
         }
 
-        */
         //access_token = session.access_token.clone();
-
+        //
     }
+        */
 
     if let Ok((valid, Some(session))) = state.session.validate_session(
         session_id,
         &device_id,
     ).await{
+
+
+
+        /*
+        if let Ok(token_exists) = state.db.synapse.access_token_valid(
+            session.user_id.clone().as_str(),
+            session.access_token.clone().as_str(),
+            &device_id
+        ).await{
+            println!("Stored user invite");
+
+            if valid && token_exists {
+                return Ok(Json(json!({
+                    "valid": true,
+                    "access_token": session.access_token,
+                    "user_id": session.user_id,
+                })));
+            }
+        }
+*/
 
         if valid {
             return Ok(Json(json!({
@@ -551,6 +571,7 @@ pub async fn validate_session(
                 "user_id": session.user_id,
             })));
         }
+
         
     };
 

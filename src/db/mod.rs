@@ -18,6 +18,7 @@ pub struct Database {
 
 #[async_trait::async_trait]
 pub trait Queries {
+    async fn access_token_valid(&self, user_id: &str, access_token: &str,device_id: &str) -> Result<bool, anyhow::Error>;
     async fn email_exists(&self, email: &str) -> Result<bool, anyhow::Error>;
     async fn add_email(&self, user_id: &str, email: &str) -> Result<(), anyhow::Error>;
     async fn get_user_id_from_email(&self, email: &str) -> Result<Option<String>, anyhow::Error>;
@@ -93,6 +94,32 @@ impl Database {
 
 #[async_trait::async_trait]
 impl Queries for PgPool {
+
+    async fn access_token_valid(
+        &self, 
+        user_id: &str,
+        access_token: &str,
+        device_id: &str
+    ) 
+    -> Result<bool, anyhow::Error>{
+
+
+        println!("Checking access token: {} for user: {} and device: {}", access_token, user_id, device_id);
+
+        let row = sqlx::query("SELECT EXISTS(SELECT 1 FROM access_tokens WHERE user_id = $1 and token = $2 and device_id = $3)")
+            .bind(user_id)
+            .bind(access_token)
+            .bind(device_id)
+            .fetch_one(self)
+            .await?;
+
+        let exists: bool = row.get(0);
+
+        println!("Access token exists: {}", exists);
+
+        Ok(exists)
+    }
+
     async fn email_exists(&self, email: &str) -> Result<bool, anyhow::Error>{
         let row = sqlx::query("SELECT EXISTS(SELECT 1 FROM user_threepids WHERE address = $1 and medium='email')")
             .bind(email)
