@@ -1,4 +1,4 @@
-name: Build & Deploy
+name: Deploy
 
 on:
   push:
@@ -6,24 +6,12 @@ on:
   pull_request:
     branches: [ "main" ]
 
-env:
-  CARGO_TERM_COLOR: always
-
 jobs:
-  build:
+  deploy:
 
-    runs-on: ubuntu-arm64
+    runs-on: ubuntu-latest
 
     steps:
-    
-    - name: Checkout repository
-      uses: actions/checkout@v4
-
-    - name: Set up Rust
-      uses: dtolnay/rust-toolchain@stable
-        
-    - name: Build 
-      run: cargo build --release
       
     - name: Setup SSH
       run: |
@@ -32,5 +20,10 @@ jobs:
         chmod 600 ~/.ssh/id_ed25519
         ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
 
-    - name: Upload binary using SCP
-      run: scp target/release/matrixbird ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/home/${{ secrets.VPS_USER }}/server/matrixbird
+    - name: Deploy and Build on VPS
+      run: ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
+        cd /home/${{ secrets.VPS_USER }}/server
+        git pull
+        cargo build --release
+        mv target/release/matrixbird /home/${{ secrets.VPS_USER }}/matrixbird
+        EOF
