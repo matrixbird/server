@@ -26,5 +26,4 @@ jobs:
        cd /home/${{ secrets.VPS_USER }}/server
        git pull
        cargo build --release
-       systemctl --user restart matrixbird.service
        EOF
