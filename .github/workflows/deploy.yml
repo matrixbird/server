@@ -21,9 +21,10 @@ jobs:
         ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
 
     - name: Deploy and Build on VPS
-      run: ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
-        cd /home/${{ secrets.VPS_USER }}/server
-        git pull
-        cargo build --release
-        mv target/release/matrixbird /home/${{ secrets.VPS_USER }}/matrixbird
-        EOF
+      run: |
+       ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} <<EOF
+       cd /home/${{ secrets.VPS_USER }}/server
+       git pull
+       cargo build --release
+       mv target/release/matrixbird /home/${{ secrets.VPS_USER }}/server/matrixbird
+       EOF
