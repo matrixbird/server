@@ -101,7 +101,7 @@ pub struct Attachment {
 
 
 
-pub async fn hook(
+pub async fn _hook(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<EmailRequest>,
 ) -> Json<Value> {
@@ -284,9 +284,21 @@ pub async fn invite_hook(
 
 #[derive(Serialize)]
 pub struct HookResponse {
-    action: &'static str,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    err: Option<String>,
+    action: String,
+}
+
+impl HookResponse {
+    fn accept() -> Self {
+        Self {
+            action: "accept".to_string(),
+        }
+    }
+
+    fn reject() -> Self {
+        Self {
+            action: "reject".to_string(),
+        }
+    }
 }
 
 async fn process_email(
@@ -367,7 +379,7 @@ async fn process_email(
     tracing::info!("Email processed and message sent successfully");
 }
 
-pub async fn book(
+pub async fn hook(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<EmailRequest>,
 ) -> Json<HookResponse> {
@@ -376,17 +388,11 @@ pub async fn book(
     // Early return for postmaster or invalid localpart
     let (user, tag) = match get_localpart(payload.envelope_to.clone()) {
         Some(parts) => parts,
-        None => return Json(HookResponse{ 
-            action: "accept",
-            err: None 
-        }),
+        None => return Json(HookResponse::reject()),
     };
 
     if user == "postmaster" {
-        return Json(HookResponse{
-            action: "accept", 
-            err: None 
-        });
+        return Json(HookResponse::accept())
     }
 
     if let Some(tag) = tag {
@@ -405,14 +411,11 @@ pub async fn book(
                 process_email(state_clone, &payload, &user).await;
             });
             
-            Json(HookResponse{
-                action: "accept",
-                err: None
-            })
+            return Json(HookResponse::accept())
         }
-        _ => Json(HookResponse { 
-            action: "reject", 
-            err: Some("user doesn't exist".to_string()) 
-        })
+        _ => {
+            tracing::error!("User does not exist: {}", mxid);
+            return Json(HookResponse::reject())
+        }
     }
 }

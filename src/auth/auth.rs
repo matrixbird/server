@@ -130,6 +130,8 @@ pub async fn login(
     })))
 }
 
+
+
 #[derive(Clone, Debug, Deserialize, Serialize, EventContent)]
 #[ruma_event(type = "matrixbird.room.type", kind = State, state_key_type = String)]
 pub struct RoomTypeContent {
