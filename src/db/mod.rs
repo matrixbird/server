@@ -21,7 +21,7 @@ pub struct Database {
 
 #[async_trait::async_trait]
 pub trait Queries {
-    async fn store_email_data(&self, message_id: &str, envelope_from: &str, envelope_to: &str,email: Value) -> Result<(), anyhow::Error>;
+    async fn store_email_data(&self, message_id: &str, envelope_from: &str, envelope_to: &str,email: Value) -> Result<(), sqlx::Error>;
     async fn set_email_processed(&self, message_id: &str) -> Result<(), anyhow::Error>;
     async fn access_token_valid(&self, user_id: &str, access_token: &str,device_id: &str) -> Result<bool, anyhow::Error>;
     async fn email_exists(&self, email: &str) -> Result<bool, anyhow::Error>;
@@ -108,7 +108,7 @@ impl Queries for PgPool {
         envelope_to: &str,
         email_json: Value,
     ) 
-    -> Result<(), anyhow::Error> {
+    -> Result<(), sqlx::Error> {
 
         sqlx::query("INSERT INTO emails (message_id, envelope_from, envelope_to, email_json) VALUES ($1, $2, $3, $4)")
             .bind(message_id)

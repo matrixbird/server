@@ -6,7 +6,7 @@ use axum::{
 
 use std::sync::Arc;
 
-use serde_json::json;
+use serde_json::{json, Value};
 
 use chrono::{DateTime, Utc};
 
@@ -98,10 +98,13 @@ pub struct Attachment {
     pub encoding: Option<String>,
 }
 
+
+
+
 pub async fn hook(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<EmailRequest>,
-) -> Result<impl IntoResponse, AppserviceError> {
+) -> Json<Value> {
 
     println!("Incoming email");
     println!("To: {:#?}", payload);
@@ -111,9 +114,9 @@ pub async fn hook(
         println!("localpart is: {}", user);
 
         if user == "postmaster" {
-            return Ok(Json(json!({
+            return Json(json!({
                 "action": "accept",
-            })))
+            }))
         }
 
         if let Some(tag) = tag {
@@ -215,19 +218,19 @@ pub async fn hook(
 
 
         } else {
-            return Ok(Json(json!({
+            return Json(json!({
                 "action": "reject",
                 "err": "user doesn't exist",
-            })))
+            }))
         }
 
 
     }
 
-    Ok(Json(json!({
+    Json(json!({
         "action": "accept",
         "err": "none",
-    })))
+    }))
 }
 
 
@@ -278,3 +281,138 @@ pub async fn invite_hook(
     })))
 }
 
+
+#[derive(Serialize)]
+pub struct HookResponse {
+    action: &'static str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    err: Option<String>,
+}
+
+async fn process_email(
+    state: Arc<AppState>,
+    payload: &EmailRequest,
+    user: &str,
+) {
+    // Store email data first - independent operation
+    let store_result = match serde_json::to_value(payload) {
+        Ok(email_json) => {
+            state.db.matrixbird.store_email_data(
+                payload.message_id.as_str(),
+                payload.envelope_from.as_str(),
+                payload.envelope_to.as_str(),
+                email_json,
+            ).await
+        }
+        Err(e) => {
+            tracing::error!("Failed to serialize email: {}", e);
+            return;
+        }
+    };
+
+    if let Err(e) = store_result {
+        tracing::error!("Failed to store email: {}", e);
+        return;
+    }
+    tracing::info!("Email stored successfully");
+
+    // Try to send Matrix message
+    let server_name = state.config.matrix.server_name.clone();
+    let raw_alias = format!("#{}:{}", user, server_name);
+    
+    // Early return if we can't parse the alias
+    let alias = match RoomAliasId::parse(&raw_alias) {
+        Ok(alias) => alias,
+        Err(e) => {
+            tracing::error!("Failed to parse room alias: {}", e);
+            return;
+        }
+    };
+
+    // Early return if we can't get the room ID
+    let room_id = match state.appservice.room_id_from_alias(alias).await {
+        Some(id) => id,
+        None => {
+            tracing::error!("Failed to get room ID for alias");
+            return;
+        }
+    };
+
+    let ev_type = MessageLikeEventType::from("matrixbird.email");
+    let email_content = EmailContent {
+        body: payload.content.text.clone()
+            .or_else(|| payload.content.html.clone())
+            .unwrap_or_default(),
+    };
+
+    // Create and send the message
+    let raw_event = match ruma::serde::Raw::new(&email_content) {
+        Ok(raw) => raw.cast::<AnyMessageLikeEventContent>(),
+        Err(e) => {
+            tracing::error!("Failed to create raw event: {}", e);
+            return;
+        }
+    };
+
+    if let Err(e) = state.appservice.send_message(ev_type, room_id, raw_event).await {
+        tracing::error!("Failed to send Matrix message: {}", e);
+        return;
+    }
+
+    if let Err(e) = state.db.matrixbird.set_email_processed(&payload.message_id).await {
+        tracing::error!("Failed to mark email as processed: {}", e);
+        return;
+    }
+
+    tracing::info!("Email processed and message sent successfully");
+}
+
+pub async fn book(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<EmailRequest>,
+) -> Json<HookResponse> {
+    tracing::info!("Incoming email: {:?}", payload);
+
+    // Early return for postmaster or invalid localpart
+    let (user, tag) = match get_localpart(payload.envelope_to.clone()) {
+        Some(parts) => parts,
+        None => return Json(HookResponse{ 
+            action: "accept",
+            err: None 
+        }),
+    };
+
+    if user == "postmaster" {
+        return Json(HookResponse{
+            action: "accept", 
+            err: None 
+        });
+    }
+
+    if let Some(tag) = tag {
+        tracing::debug!("Email tag: {}", tag);
+    }
+
+    let mxid = format!("@{}:{}", user, state.config.matrix.server_name);
+    tracing::debug!("Processing email for MXID: {}", mxid);
+
+    // Check if user exists
+    match state.db.synapse.user_exists(&mxid).await {
+        Ok(true) => {
+            // Spawn async task to process email
+            let state_clone = state.clone();
+            tokio::spawn(async move {
+                process_email(state_clone, &payload, &user).await;
+            });
+            
+            Json(HookResponse{
+                action: "accept",
+                err: None
+            })
+        }
+        _ => Json(HookResponse { 
+            action: "reject", 
+            err: Some("user doesn't exist".to_string()) 
+        })
+    }
+}
