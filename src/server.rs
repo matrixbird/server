@@ -32,7 +32,7 @@ use crate::middleware::{
 };
 
 use crate::ping::ping;
-use crate::ping::{invite_hook, hook};
+use crate::hook::{invite_hook, hook};
 
 use crate::auth::{
     login, 

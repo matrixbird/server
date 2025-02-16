@@ -2,6 +2,7 @@ pub mod config;
 pub mod appservice;
 pub mod db;
 pub mod server;
+pub mod hook;
 pub mod ping;
 pub mod api;
 pub mod rooms;
@@ -14,8 +15,7 @@ pub mod session;
 pub mod error;
 pub mod utils;
 
-use db::Queries;
-
+//use db::Queries;
 
 use std::sync::Arc;
 use axum::body::Body;

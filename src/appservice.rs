@@ -44,7 +44,7 @@ use anyhow;
 
 use serde::{Serialize, Deserialize};
 
-use crate::ping::EmailContent;
+use crate::hook::EmailContent;
 
 pub type HttpClient = ruma::client::http_client::HyperNativeTls;
 
