@@ -1,4 +1,4 @@
-name: Deploy to Server
+name: Build & Deploy
 
 on:
   push:
@@ -12,7 +12,7 @@ env:
 jobs:
   build:
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-arm64
 
     steps:
     
@@ -33,4 +33,4 @@ jobs:
         ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
 
     - name: Upload binary using SCP
-      run: scp target/release/matrixbird ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/home/${{ secrets.VPS_USER }}/matrixbird-binary
+      run: scp target/release/matrixbird ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/home/${{ secrets.VPS_USER }}/server/matrixbird
