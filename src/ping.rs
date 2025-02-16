@@ -9,6 +9,7 @@ use tokio::sync::RwLock;
 use uuid::Uuid;
 
 use serde_json::json;
+use serde_json::Value;
 
 use chrono::{DateTime, Utc};
 
@@ -90,52 +91,67 @@ pub async fn ping(
     Ok(Json(json!({})))
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct EmailRequest {
     pub message_id: String,
     pub envelope_from: String,
     pub envelope_to: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub in_reply_to: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub references: Option<String>,
     pub from: Address,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub sender: Option<Address>,
     pub to: Vec<Address>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub cc: Option<Vec<Address>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub bcc: Option<Vec<Address>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub reply_to: Option<Vec<Address>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub subject: Option<String>,
     pub date: DateTime<Utc>,
     //pub headers: Vec<Header>,
     pub content: Content,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub attachments: Option<Vec<Attachment>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub delivered_to: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub return_path: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Address {
     pub address: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Header {
     pub key: String,
     pub value: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Content {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub text: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub html: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Attachment {
     pub filename: String,
     pub path: String,
     pub mime_type: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub content_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub encoding: Option<String>,
 }
 
@@ -146,12 +162,7 @@ pub async fn hook(
 
     println!("Incoming email");
     println!("To: {:#?}", payload);
-    //println!("From: {:#?}", payload.from);
-    //println!("Subject: {:#?}", payload.subject);
-    //println!("Headers: {:#?}", payload.headers);
-    //println!("Content: {:#?}", payload.content);
-    //
-    //
+
 
 
     if let Some((user, tag)) = get_localpart(&payload.envelope_to) {
@@ -170,11 +181,43 @@ pub async fn hook(
         let mxid = format!("@{}:{}", user, state.config.matrix.server_name);
         println!("MXID: {}", mxid);
 
-        let profile = state.appservice.get_profile(mxid).await;
 
-        if let Some(profile) = profile {
-            println!("Profile: {:#?}", profile);
 
+
+        let user_exists = match state.db.synapse.user_exists(&mxid).await {
+            Ok(exists) => {
+
+                if let Ok(email_json) = serde_json::to_value(&payload){
+                    if let Ok(()) = state.db.matrixbird.store_email_data(
+                        &payload.envelope_from.as_str(),
+                        &payload.envelope_to.as_str(),
+                        email_json
+                    ).await{
+                        println!("Stored email");
+                    }
+                }
+
+                exists
+            }
+            Err(e) => {
+                eprintln!("Error checking user existence: {:#?}", e);
+                false
+            }
+        };
+
+
+
+
+
+
+
+
+
+
+
+
+
+        if user_exists {
 
             let server_name = state.config.matrix.server_name.clone();
             let raw_alias = format!("#{}:{}", user, server_name);

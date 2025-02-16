@@ -8,6 +8,9 @@ use sqlx::ConnectOptions;
 use sqlx::Row;
 use std::process;
 
+use serde_json::Value;
+
+
 use crate::config::Config;
 
 #[derive(Clone)]
@@ -18,8 +21,10 @@ pub struct Database {
 
 #[async_trait::async_trait]
 pub trait Queries {
+    async fn store_email_data(&self, envelope_from: &str, envelope_to: &str,email: Value) -> Result<(), anyhow::Error>;
     async fn access_token_valid(&self, user_id: &str, access_token: &str,device_id: &str) -> Result<bool, anyhow::Error>;
     async fn email_exists(&self, email: &str) -> Result<bool, anyhow::Error>;
+    async fn user_exists(&self, user_id: &str) -> Result<bool, anyhow::Error>;
     async fn add_email(&self, user_id: &str, email: &str) -> Result<(), anyhow::Error>;
     async fn get_user_id_from_email(&self, email: &str) -> Result<Option<String>, anyhow::Error>;
     async fn get_email_from_user_id(&self, user_id: &str) -> Result<Option<String>, anyhow::Error>;
@@ -95,6 +100,23 @@ impl Database {
 #[async_trait::async_trait]
 impl Queries for PgPool {
 
+    async fn store_email_data(
+        &self, 
+        envelope_from: &str, 
+        envelope_to: &str,
+        email: Value,
+    ) 
+    -> Result<(), anyhow::Error> {
+
+        sqlx::query("INSERT INTO emails (envelope_from, envelope_to, email) VALUES ($1, $2, $3)")
+            .bind(envelope_from)
+            .bind(envelope_to)
+            .bind(email)
+            .execute(self)
+            .await?;
+        Ok(())
+    }
+
     async fn access_token_valid(
         &self, 
         user_id: &str,
@@ -129,6 +151,17 @@ impl Queries for PgPool {
         let exists: bool = row.get(0);
         Ok(exists)
     }
+
+    async fn user_exists(&self, user_id: &str) -> Result<bool, anyhow::Error>{
+        let row = sqlx::query("SELECT EXISTS(SELECT 1 FROM users WHERE name = $1 and deactivated = 0 and approved = true and is_guest = 0 and suspended = false )")
+            .bind(user_id)
+            .fetch_one(self)
+            .await?;
+
+        let exists: bool = row.get(0);
+        Ok(exists)
+    }
+
 
     async fn add_email(&self, user_id: &str, email: &str) -> Result<(), anyhow::Error> {
 

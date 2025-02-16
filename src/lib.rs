@@ -52,13 +52,6 @@ impl AppState {
 
         let db = db::Database::new(&config).await;
 
-                if let Err(e) = db.matrixbird.activate_invite_code(
-                    "sup@sup.com",
-                    "FX4NY-MCLGI"
-                ).await{
-                    println!("Could not activate invite code: {:?}", e);
-                }
-
         let email_client = email::EmailClient::new(
             &config.email.api_token,
             &config.email.account,
