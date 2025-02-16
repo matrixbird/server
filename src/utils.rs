@@ -84,11 +84,11 @@ pub fn slugify(s: &str) -> String {
     SLUG_REGEX.replace_all(s, "-").to_string().to_lowercase()
 }
 
-pub fn get_localpart(email: &str) -> Option<(&str, Option<&str>)> {
+pub fn get_localpart(email: String) -> Option<(String, Option<String>)> {
     email.split('@').next().map(|local| {
         let mut parts = local.splitn(2, '+');
-        let base = parts.next().unwrap_or("");
-        let tag = parts.next();
+        let base = parts.next().unwrap_or("").to_string();
+        let tag = parts.next().map(|t| t.to_string());
         (base, tag)
     })
 }

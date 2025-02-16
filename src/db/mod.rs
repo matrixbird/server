@@ -21,7 +21,8 @@ pub struct Database {
 
 #[async_trait::async_trait]
 pub trait Queries {
-    async fn store_email_data(&self, envelope_from: &str, envelope_to: &str,email: Value) -> Result<(), anyhow::Error>;
+    async fn store_email_data(&self, message_id: &str, envelope_from: &str, envelope_to: &str,email: Value) -> Result<(), anyhow::Error>;
+    async fn set_email_processed(&self, message_id: &str) -> Result<(), anyhow::Error>;
     async fn access_token_valid(&self, user_id: &str, access_token: &str,device_id: &str) -> Result<bool, anyhow::Error>;
     async fn email_exists(&self, email: &str) -> Result<bool, anyhow::Error>;
     async fn user_exists(&self, user_id: &str) -> Result<bool, anyhow::Error>;
@@ -102,18 +103,33 @@ impl Queries for PgPool {
 
     async fn store_email_data(
         &self, 
+        message_id: &str, 
         envelope_from: &str, 
         envelope_to: &str,
-        email: Value,
+        email_json: Value,
     ) 
     -> Result<(), anyhow::Error> {
 
-        sqlx::query("INSERT INTO emails (envelope_from, envelope_to, email) VALUES ($1, $2, $3)")
+        sqlx::query("INSERT INTO emails (message_id, envelope_from, envelope_to, email_json) VALUES ($1, $2, $3, $4)")
+            .bind(message_id)
             .bind(envelope_from)
             .bind(envelope_to)
-            .bind(email)
+            .bind(email_json)
             .execute(self)
             .await?;
+        Ok(())
+    }
+
+    async fn set_email_processed(&self, message_id: &str) -> Result<(), anyhow::Error> {
+
+        let now = sqlx::types::time::OffsetDateTime::now_utc();
+
+        sqlx::query("UPDATE emails SET processed = true, processed_at = $1 WHERE message_id = $2;")
+            .bind(now)
+            .bind(message_id)
+            .execute(self)
+            .await?;
+
         Ok(())
     }
 

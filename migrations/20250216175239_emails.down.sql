@@ -1,3 +1,4 @@
+DROP INDEX IF EXISTS idx_emails_message_id;
 DROP INDEX IF EXISTS idx_emails_envelope_from;
 DROP INDEX IF EXISTS idx_emails_envelope_to;
 DROP INDEX IF EXISTS idx_emails_created_at;

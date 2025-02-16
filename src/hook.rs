@@ -107,8 +107,7 @@ pub async fn hook(
     println!("To: {:#?}", payload);
 
 
-
-    if let Some((user, tag)) = get_localpart(&payload.envelope_to) {
+    if let Some((user, tag)) = get_localpart(payload.envelope_to.clone()) {
         println!("localpart is: {}", user);
 
         if user == "postmaster" {
@@ -132,6 +131,7 @@ pub async fn hook(
 
                 if let Ok(email_json) = serde_json::to_value(&payload){
                     if let Ok(()) = state.db.matrixbird.store_email_data(
+                        &payload.message_id.as_str(),
                         &payload.envelope_from.as_str(),
                         &payload.envelope_to.as_str(),
                         email_json
@@ -151,16 +151,11 @@ pub async fn hook(
 
 
 
-
-
-
-
-
-
-
-
-
         if user_exists {
+
+
+            tokio::spawn(async move {
+
 
             let server_name = state.config.matrix.server_name.clone();
             let raw_alias = format!("#{}:{}", user, server_name);
@@ -183,26 +178,40 @@ pub async fn hook(
                         };
 
 
-                        let raw_event = ruma::serde::Raw::new(&em_cont)
-                            .map_err(|_| AppserviceError::MatrixError("bad".to_string()))?;
+                        let raw_event = ruma::serde::Raw::new(&em_cont);
 
-                        let raw = raw_event.cast::<AnyMessageLikeEventContent>();
+                        match raw_event {
+                            Ok(rev) => {
+                                println!("Raw Event: {:#?}", rev);
+
+                                let raw = rev.cast::<AnyMessageLikeEventContent>();
+                                let re = state.appservice.send_message(
+                                    ev_type,
+                                    id,
+                                    raw
+                                ).await;
+
+                                println!("Send Message: {:#?}", re);
 
 
+                                if let Ok(()) = state.db.matrixbird.set_email_processed(&payload.message_id).await{
+                                    println!("Email processed");
+                                }
 
-                        let re = state.appservice.send_message(
-                            ev_type,
-                            id,
-                            raw
-                        ).await;
 
-                        println!("Send Message: {:#?}", re);
+                            }
+                            Err(e) => {
+                                eprintln!("Error creating raw event: {:#?}", e);
+                            }
+                        }
+
 
                     }
                     None => {}
                 }
             }
 
+            });
 
 
         } else {
