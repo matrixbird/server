@@ -1,4 +1,5 @@
 use crate::config::Config;
+use chrono::Utc;
 
 use ruma::{
     OwnedRoomId,
@@ -40,11 +41,13 @@ use ruma::{
     }
 };
 
+use uuid::Uuid;
+
 use anyhow;
 
 use serde::{Serialize, Deserialize};
 
-use crate::hook::EmailContent;
+use crate::hook::{EmailBody, EmailContent, Address};
 
 pub type HttpClient = ruma::client::http_client::HyperNativeTls;
 
@@ -355,8 +358,28 @@ impl AppService {
 
         let ev_type = MessageLikeEventType::from("matrixbird.email");
 
+        let mid_localpart = Uuid::new_v4().to_string();
+        let message_id = format!("{}@{}", mid_localpart, "matrixbird.com");
+
+
+        let from = Address{
+            name: Some(String::from("Matrixbird")),
+            address: String::from("welcome@matrixbird.com")
+        };
+
+        let date = Utc::now();
+
+        let body = EmailBody{
+            text: None,
+            html: Some(body),
+        };
+
         let em_cont = EmailContent{
+            message_id,
             body,
+            from,
+            subject: Some(String::from("Welcome to Matrixbird!")),
+            date,
         };
 
         let raw_event = ruma::serde::Raw::new(&em_cont)?;

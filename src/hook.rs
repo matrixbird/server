@@ -6,7 +6,7 @@ use axum::{
 
 use std::sync::Arc;
 
-use serde_json::{json, Value};
+use serde_json::json;
 
 use chrono::{DateTime, Utc};
 
@@ -31,10 +31,20 @@ use ruma::{
 #[derive(Clone, Debug, Deserialize, Serialize, EventContent)]
 #[ruma_event(type = "matrixbird.email", kind = MessageLike)]
 pub struct EmailContent {
-    pub body: String,
+    pub message_id: String,
+    pub body: EmailBody,
+    pub from: Address,
+    pub subject: Option<String>,
+    pub date: DateTime<Utc>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct EmailBody {
+    pub text: Option<String>,
+    pub html: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct EmailRequest {
     pub message_id: String,
     pub envelope_from: String,
@@ -66,20 +76,20 @@ pub struct EmailRequest {
     pub return_path: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Address {
     pub address: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Header {
     pub key: String,
     pub value: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Content {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub text: Option<String>,
@@ -87,7 +97,7 @@ pub struct Content {
     pub html: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Attachment {
     pub filename: String,
     pub path: String,
@@ -101,137 +111,6 @@ pub struct Attachment {
 
 
 
-pub async fn _hook(
-    State(state): State<Arc<AppState>>,
-    Json(payload): Json<EmailRequest>,
-) -> Json<Value> {
-
-    println!("Incoming email");
-    println!("To: {:#?}", payload);
-
-
-    if let Some((user, tag)) = get_localpart(payload.envelope_to.clone()) {
-        println!("localpart is: {}", user);
-
-        if user == "postmaster" {
-            return Json(json!({
-                "action": "accept",
-            }))
-        }
-
-        if let Some(tag) = tag {
-            println!("Tag: {}", tag);
-        }
-
-        let mxid = format!("@{}:{}", user, state.config.matrix.server_name);
-        println!("MXID: {}", mxid);
-
-
-
-
-        let user_exists = match state.db.synapse.user_exists(&mxid).await {
-            Ok(exists) => {
-
-                if let Ok(email_json) = serde_json::to_value(&payload){
-                    if let Ok(()) = state.db.matrixbird.store_email_data(
-                        &payload.message_id.as_str(),
-                        &payload.envelope_from.as_str(),
-                        &payload.envelope_to.as_str(),
-                        email_json
-                    ).await{
-                        println!("Stored email");
-                    }
-                }
-
-                exists
-            }
-            Err(e) => {
-                eprintln!("Error checking user existence: {:#?}", e);
-                false
-            }
-        };
-
-
-
-
-        if user_exists {
-
-
-            tokio::spawn(async move {
-
-
-            let server_name = state.config.matrix.server_name.clone();
-            let raw_alias = format!("#{}:{}", user, server_name);
-            println!("Raw Alias: {}", raw_alias);
-
-            if let Ok(alias) = RoomAliasId::parse(&raw_alias) {
-                let id = state.appservice.room_id_from_alias(alias).await;
-                match id {
-                    Some(id) => {
-                        println!("Fetched Room ID: {:#?}", id);
-
-
-
-                        let ev_type = MessageLikeEventType::from("matrixbird.email");
-
-
-
-                        let em_cont = EmailContent{
-                            body: payload.content.text.clone().unwrap_or_else(|| payload.content.html.clone().unwrap_or_else(|| "".to_string())),
-                        };
-
-
-                        let raw_event = ruma::serde::Raw::new(&em_cont);
-
-                        match raw_event {
-                            Ok(rev) => {
-                                println!("Raw Event: {:#?}", rev);
-
-                                let raw = rev.cast::<AnyMessageLikeEventContent>();
-                                let re = state.appservice.send_message(
-                                    ev_type,
-                                    id,
-                                    raw
-                                ).await;
-
-                                println!("Send Message: {:#?}", re);
-
-
-                                if let Ok(()) = state.db.matrixbird.set_email_processed(&payload.message_id).await{
-                                    println!("Email processed");
-                                }
-
-
-                            }
-                            Err(e) => {
-                                eprintln!("Error creating raw event: {:#?}", e);
-                            }
-                        }
-
-
-                    }
-                    None => {}
-                }
-            }
-
-            });
-
-
-        } else {
-            return Json(json!({
-                "action": "reject",
-                "err": "user doesn't exist",
-            }))
-        }
-
-
-    }
-
-    Json(json!({
-        "action": "accept",
-        "err": "none",
-    }))
-}
 
 
 #[derive(Debug, Deserialize)]
@@ -351,10 +230,16 @@ async fn process_email(
     };
 
     let ev_type = MessageLikeEventType::from("matrixbird.email");
+    let email_body = EmailBody {
+        text: payload.content.text.clone(),
+        html: payload.content.html.clone(),
+    };
     let email_content = EmailContent {
-        body: payload.content.text.clone()
-            .or_else(|| payload.content.html.clone())
-            .unwrap_or_default(),
+        message_id: payload.message_id.clone(),
+        body: email_body,
+        from: payload.from.clone(),
+        subject: payload.subject.clone(),
+        date: payload.date.clone(),
     };
 
     // Create and send the message
