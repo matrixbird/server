@@ -15,8 +15,6 @@ pub mod session;
 pub mod error;
 pub mod utils;
 
-//use db::Queries;
-
 use std::sync::Arc;
 use axum::body::Body;
 use hyper_util::{client::legacy::connect::HttpConnector, rt::TokioExecutor};
@@ -51,6 +49,12 @@ impl AppState {
         let transaction_store = ping::TransactionStore::new();
 
         let db = db::Database::new(&config).await;
+
+        if let Ok(exists) = db.user_exists(
+            "@alice:localhost:8480"
+        ).await{
+            println!("does user exist? {:?}", exists);
+        }
 
         let email_client = email::EmailClient::new(
             &config.email.api_token,

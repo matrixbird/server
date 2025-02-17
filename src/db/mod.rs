@@ -19,21 +19,6 @@ pub struct Database {
     pub matrixbird: PgPool,
 }
 
-#[async_trait::async_trait]
-pub trait Queries {
-    async fn store_email_data(&self, message_id: &str, envelope_from: &str, envelope_to: &str,email: Value) -> Result<(), sqlx::Error>;
-    async fn set_email_processed(&self, message_id: &str) -> Result<(), anyhow::Error>;
-    async fn access_token_valid(&self, user_id: &str, access_token: &str,device_id: &str) -> Result<bool, anyhow::Error>;
-    async fn email_exists(&self, email: &str) -> Result<bool, anyhow::Error>;
-    async fn user_exists(&self, user_id: &str) -> Result<bool, anyhow::Error>;
-    async fn add_email(&self, user_id: &str, email: &str) -> Result<(), anyhow::Error>;
-    async fn get_user_id_from_email(&self, email: &str) -> Result<Option<String>, anyhow::Error>;
-    async fn get_email_from_user_id(&self, user_id: &str) -> Result<Option<String>, anyhow::Error>;
-    async fn add_invite(&self, email: &str, code: &str) -> Result<(), anyhow::Error>;
-    async fn get_invite_code_email(&self, code: &str) -> Result<Option<String>, anyhow::Error>;
-    async fn activate_invite_code(&self, email: &str, code: &str) -> Result<(), anyhow::Error>;
-}
-
 impl Database {
     pub async fn new(config: &Config) -> Self {
 
@@ -96,12 +81,8 @@ impl Database {
         }
 
     }
-}
 
-#[async_trait::async_trait]
-impl Queries for PgPool {
-
-    async fn store_email_data(
+    pub async fn store_email_data(
         &self, 
         message_id: &str, 
         envelope_from: &str, 
@@ -115,25 +96,25 @@ impl Queries for PgPool {
             .bind(envelope_from)
             .bind(envelope_to)
             .bind(email_json)
-            .execute(self)
+            .execute(&self.matrixbird)
             .await?;
         Ok(())
     }
 
-    async fn set_email_processed(&self, message_id: &str) -> Result<(), anyhow::Error> {
+    pub async fn set_email_processed(&self, message_id: &str) -> Result<(), anyhow::Error> {
 
         let now = sqlx::types::time::OffsetDateTime::now_utc();
 
         sqlx::query("UPDATE emails SET processed = true, processed_at = $1 WHERE message_id = $2;")
             .bind(now)
             .bind(message_id)
-            .execute(self)
+            .execute(&self.matrixbird)
             .await?;
 
         Ok(())
     }
 
-    async fn access_token_valid(
+    pub async fn access_token_valid(
         &self, 
         user_id: &str,
         access_token: &str,
@@ -148,7 +129,7 @@ impl Queries for PgPool {
             .bind(user_id)
             .bind(access_token)
             .bind(device_id)
-            .fetch_one(self)
+            .fetch_one(&self.synapse)
             .await?;
 
         let exists: bool = row.get(0);
@@ -158,20 +139,20 @@ impl Queries for PgPool {
         Ok(exists)
     }
 
-    async fn email_exists(&self, email: &str) -> Result<bool, anyhow::Error>{
+    pub async fn email_exists(&self, email: &str) -> Result<bool, anyhow::Error>{
         let row = sqlx::query("SELECT EXISTS(SELECT 1 FROM user_threepids WHERE address = $1 and medium='email')")
             .bind(email)
-            .fetch_one(self)
+            .fetch_one(&self.synapse)
             .await?;
 
         let exists: bool = row.get(0);
         Ok(exists)
     }
 
-    async fn user_exists(&self, user_id: &str) -> Result<bool, anyhow::Error>{
+    pub async fn user_exists(&self, user_id: &str) -> Result<bool, anyhow::Error>{
         let row = sqlx::query("SELECT EXISTS(SELECT 1 FROM users WHERE name = $1 and deactivated = 0 and approved = true and is_guest = 0 and suspended = false )")
             .bind(user_id)
-            .fetch_one(self)
+            .fetch_one(&self.synapse)
             .await?;
 
         let exists: bool = row.get(0);
@@ -179,7 +160,7 @@ impl Queries for PgPool {
     }
 
 
-    async fn add_email(&self, user_id: &str, email: &str) -> Result<(), anyhow::Error> {
+    pub async fn add_email(&self, user_id: &str, email: &str) -> Result<(), anyhow::Error> {
 
         let now = Utc::now().timestamp();
 
@@ -189,53 +170,53 @@ impl Queries for PgPool {
             .bind(email)
             .bind(now)
             .bind(now)
-            .execute(self)
+            .execute(&self.synapse)
             .await?;
         Ok(())
     }
 
-    async fn get_user_id_from_email(&self, email: &str) -> Result<Option<String>, anyhow::Error> {
+    pub async fn get_user_id_from_email(&self, email: &str) -> Result<Option<String>, anyhow::Error> {
 
         let row = sqlx::query("SELECT user_id FROM user_threepids WHERE address = $1 and medium='email';")
             .bind(email)
-            .fetch_one(self)
+            .fetch_one(&self.synapse)
             .await?;
 
         Ok(row.try_get("user_id").ok())
     }
 
-    async fn get_email_from_user_id(&self, user_id: &str) -> Result<Option<String>, anyhow::Error> {
+    pub async fn get_email_from_user_id(&self, user_id: &str) -> Result<Option<String>, anyhow::Error> {
 
         let row = sqlx::query("SELECT address FROM user_threepids WHERE user_id = $1 and medium='email';")
             .bind(user_id)
-            .fetch_one(self)
+            .fetch_one(&self.synapse)
             .await?;
 
         Ok(row.try_get("address").ok())
     }
 
-    async fn add_invite(&self, email: &str, code: &str) -> Result<(), anyhow::Error> {
+    pub async fn add_invite(&self, email: &str, code: &str) -> Result<(), anyhow::Error> {
 
         sqlx::query("INSERT INTO invites (email, code) VALUES ($1, $2);")
             .bind(email)
             .bind(code)
-            .execute(self)
+            .execute(&self.matrixbird)
             .await?;
 
         Ok(())
     }
 
-    async fn get_invite_code_email(&self, code: &str) -> Result<Option<String>, anyhow::Error> {
+    pub async fn get_invite_code_email(&self, code: &str) -> Result<Option<String>, anyhow::Error> {
 
         let row = sqlx::query("SELECT email FROM invites WHERE code = $1 and activated = false and invite_sent = true;")
             .bind(code)
-            .fetch_one(self)
+            .fetch_one(&self.matrixbird)
             .await?;
 
         Ok(row.try_get("email").ok())
     }
 
-    async fn activate_invite_code(&self, email: &str, code: &str) -> Result<(), anyhow::Error> {
+    pub async fn activate_invite_code(&self, email: &str, code: &str) -> Result<(), anyhow::Error> {
 
         let now = sqlx::types::time::OffsetDateTime::now_utc();
 
@@ -245,10 +226,11 @@ impl Queries for PgPool {
             .bind(now)
             .bind(email)
             .bind(code)
-            .execute(self)
+            .execute(&self.matrixbird)
             .await?;
 
         Ok(())
     }
 
 }
+

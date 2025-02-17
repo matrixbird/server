@@ -20,12 +20,14 @@ use crate::utils::get_localpart;
 
 use ruma::{
     RoomAliasId,
+    api::client::account::get_username_availability,
     events::{
         AnyMessageLikeEventContent, 
         MessageLikeEventType,
         macros::EventContent,
     }
 };
+pub type HttpClient = ruma::client::http_client::HyperNativeTls;
 
 
 #[derive(Clone, Debug, Deserialize, Serialize, EventContent)]
@@ -126,7 +128,6 @@ pub struct InviteRequest {
 
 use crate::utils::generate_invite_code;
 
-use crate::db::Queries;
 
 pub async fn invite_hook(
     State(state): State<Arc<AppState>>,
@@ -138,7 +139,7 @@ pub async fn invite_hook(
 
     let code = generate_invite_code();
 
-    if let Ok(()) = state.db.matrixbird.add_invite(
+    if let Ok(()) = state.db.add_invite(
         payload.envelope_from.clone().as_str(),
         code.clone().as_str()
     ).await{
@@ -188,7 +189,7 @@ async fn process_email(
     // Store email data first - independent operation
     let store_result = match serde_json::to_value(payload) {
         Ok(email_json) => {
-            state.db.matrixbird.store_email_data(
+            state.db.store_email_data(
                 payload.message_id.as_str(),
                 payload.envelope_from.as_str(),
                 payload.envelope_to.as_str(),
@@ -229,7 +230,7 @@ async fn process_email(
         }
     };
 
-    let ev_type = MessageLikeEventType::from("matrixbird.email");
+    let ev_type = MessageLikeEventType::from("matrixbird.email.legacy");
     let email_body = EmailBody {
         text: payload.content.text.clone(),
         html: payload.content.html.clone(),
@@ -256,7 +257,7 @@ async fn process_email(
         return;
     }
 
-    if let Err(e) = state.db.matrixbird.set_email_processed(&payload.message_id).await {
+    if let Err(e) = state.db.set_email_processed(&payload.message_id).await {
         tracing::error!("Failed to mark email as processed: {}", e);
         return;
     }
@@ -284,23 +285,31 @@ pub async fn hook(
         tracing::debug!("Email tag: {}", tag);
     }
 
+    let client = ruma::Client::builder()
+        .homeserver_url(state.config.matrix.homeserver.clone())
+        //.access_token(Some(config.appservice.access_token.clone()))
+        .build::<HttpClient>()
+        .await.unwrap();
+
+    let av = get_username_availability::v3::Request::new(
+        user.clone(),
+    );
+
     let mxid = format!("@{}:{}", user, state.config.matrix.server_name);
     tracing::debug!("Processing email for MXID: {}", mxid);
 
-    // Check if user exists
-    match state.db.synapse.user_exists(&mxid).await {
-        Ok(true) => {
-            // Spawn async task to process email
-            let state_clone = state.clone();
-            tokio::spawn(async move {
-                process_email(state_clone, &payload, &user).await;
-            });
-            
-            return Json(HookResponse::accept())
-        }
-        _ => {
-            tracing::error!("User does not exist: {}", mxid);
-            return Json(HookResponse::reject())
-        }
+    if let Ok(_) = client.send_request(av).await {
+        tracing::error!("User does not exist: {}", mxid);
+        return Json(HookResponse::reject())
+    } else {
+        tracing::info!("User exists: {}", mxid);
+        let state_clone = state.clone();
+        tokio::spawn(async move {
+            process_email(state_clone, &payload, &user).await;
+        });
+        
+        return Json(HookResponse::accept())
     }
+
+
 }

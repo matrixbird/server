@@ -14,8 +14,6 @@ use axum::{
 
 use uuid::Uuid;
 
-use crate::db::Queries;
-
 //use tracing::{info, warn};
 
 use std::sync::Arc;
@@ -165,7 +163,7 @@ pub async fn signup(
 
                 println!("Invite code: {}", code);
 
-                if let Ok(Some(email)) = state.db.matrixbird.get_invite_code_email(
+                if let Ok(Some(email)) = state.db.get_invite_code_email(
                     &code
                 ).await{
                     println!("Email is: {}", email);
@@ -242,7 +240,7 @@ pub async fn signup(
         payload.session.clone(),
     ).await {
 
-        if let Ok(()) = state.db.synapse.add_email(
+        if let Ok(()) = state.db.add_email(
             resp.user_id.clone().as_str(),
             request.email.clone().as_str()
         ).await{
@@ -253,13 +251,13 @@ pub async fn signup(
 
     match invite_email {
         Some(email) => {
-            if let Ok(()) = state.db.synapse.add_email(
+            if let Ok(()) = state.db.add_email(
                 resp.user_id.clone().as_str(),
                 &email
             ).await{
                 println!("Added email to user");
 
-                if let Err(_) = state.db.matrixbird.activate_invite_code(
+                if let Err(_) = state.db.activate_invite_code(
                     &email,
                     &payload.invite_code.clone().unwrap()
                 ).await{
@@ -401,7 +399,7 @@ pub async fn verify_email(
 
     println!("email request: {:?}", payload);
 
-    if let Ok(exists) = state.db.synapse.email_exists(
+    if let Ok(exists) = state.db.email_exists(
         payload.email.clone().as_str()
     ).await{
         if exists {
@@ -602,7 +600,7 @@ pub async fn request_invite(
         })))
     }
 
-    if let Ok(()) = state.db.matrixbird.add_invite(
+    if let Ok(()) = state.db.add_invite(
         email.clone().as_str(),
         generate_invite_code().as_str()
     ).await{
@@ -622,7 +620,7 @@ pub async fn validate_invite_code(
 
     println!("Validating invite code: {}", code);
 
-    if let Ok(Some(email)) = state.db.matrixbird.get_invite_code_email(
+    if let Ok(Some(email)) = state.db.get_invite_code_email(
         &code
     ).await{
         println!("Email is: {}", email);
