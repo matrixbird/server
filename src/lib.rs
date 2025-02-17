@@ -51,7 +51,7 @@ impl AppState {
         let db = db::Database::new(&config).await;
 
         if let Ok(exists) = db.user_exists(
-            "@alice:localhost:8480"
+            "@lolo:localhost:8480"
         ).await{
             println!("does user exist? {:?}", exists);
         }

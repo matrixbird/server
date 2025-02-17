@@ -285,6 +285,10 @@ pub async fn hook(
         tracing::debug!("Email tag: {}", tag);
     }
 
+    let mxid = format!("@{}:{}", user, state.config.matrix.server_name);
+    tracing::debug!("Processing email for MXID: {}", mxid);
+
+
     let client = ruma::Client::builder()
         .homeserver_url(state.config.matrix.homeserver.clone())
         //.access_token(Some(config.appservice.access_token.clone()))
@@ -294,9 +298,6 @@ pub async fn hook(
     let av = get_username_availability::v3::Request::new(
         user.clone(),
     );
-
-    let mxid = format!("@{}:{}", user, state.config.matrix.server_name);
-    tracing::debug!("Processing email for MXID: {}", mxid);
 
     if let Ok(_) = client.send_request(av).await {
         tracing::error!("User does not exist: {}", mxid);
@@ -312,4 +313,22 @@ pub async fn hook(
     }
 
 
+    /*
+    // Check if user exists
+    match state.db.user_exists(&mxid).await {
+        Ok(true) => {
+            // Spawn async task to process email
+            let state_clone = state.clone();
+            tokio::spawn(async move {
+                process_email(state_clone, &payload, &user).await;
+            });
+            
+            return Json(HookResponse::accept())
+        }
+        _ => {
+            tracing::error!("User does not exist: {}", mxid);
+            return Json(HookResponse::reject())
+        }
+    }
+    */
 }

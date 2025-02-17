@@ -139,62 +139,6 @@ impl Database {
         Ok(exists)
     }
 
-    pub async fn email_exists(&self, email: &str) -> Result<bool, anyhow::Error>{
-        let row = sqlx::query("SELECT EXISTS(SELECT 1 FROM user_threepids WHERE address = $1 and medium='email')")
-            .bind(email)
-            .fetch_one(&self.synapse)
-            .await?;
-
-        let exists: bool = row.get(0);
-        Ok(exists)
-    }
-
-    pub async fn user_exists(&self, user_id: &str) -> Result<bool, anyhow::Error>{
-        let row = sqlx::query("SELECT EXISTS(SELECT 1 FROM users WHERE name = $1 and deactivated = 0 and approved = true and is_guest = 0 and suspended = false )")
-            .bind(user_id)
-            .fetch_one(&self.synapse)
-            .await?;
-
-        let exists: bool = row.get(0);
-        Ok(exists)
-    }
-
-
-    pub async fn add_email(&self, user_id: &str, email: &str) -> Result<(), anyhow::Error> {
-
-        let now = Utc::now().timestamp();
-
-        sqlx::query("INSERT INTO user_threepids (user_id, medium, address, validated_at, added_at) VALUES ($1, $2, $3, $4, $5)")
-            .bind(user_id)
-            .bind("email")
-            .bind(email)
-            .bind(now)
-            .bind(now)
-            .execute(&self.synapse)
-            .await?;
-        Ok(())
-    }
-
-    pub async fn get_user_id_from_email(&self, email: &str) -> Result<Option<String>, anyhow::Error> {
-
-        let row = sqlx::query("SELECT user_id FROM user_threepids WHERE address = $1 and medium='email';")
-            .bind(email)
-            .fetch_one(&self.synapse)
-            .await?;
-
-        Ok(row.try_get("user_id").ok())
-    }
-
-    pub async fn get_email_from_user_id(&self, user_id: &str) -> Result<Option<String>, anyhow::Error> {
-
-        let row = sqlx::query("SELECT address FROM user_threepids WHERE user_id = $1 and medium='email';")
-            .bind(user_id)
-            .fetch_one(&self.synapse)
-            .await?;
-
-        Ok(row.try_get("address").ok())
-    }
-
     pub async fn add_invite(&self, email: &str, code: &str) -> Result<(), anyhow::Error> {
 
         sqlx::query("INSERT INTO invites (email, code) VALUES ($1, $2);")
@@ -234,3 +178,73 @@ impl Database {
 
 }
 
+impl Database {
+
+    pub async fn email_exists(&self, email: &str) -> Result<bool, anyhow::Error>{
+        let row = sqlx::query("SELECT EXISTS(SELECT 1 FROM user_threepids WHERE address = $1 and medium='email')")
+            .bind(email)
+            .fetch_one(&self.synapse)
+            .await?;
+
+        let exists: bool = row.get(0);
+        Ok(exists)
+    }
+
+    pub async fn user_exists(&self, user_id: &str) -> Result<bool, anyhow::Error>{
+        let row = sqlx::query("SELECT EXISTS(SELECT 1 FROM users WHERE user_id = $1 and active = true)")
+            .bind(user_id)
+            .fetch_one(&self.matrixbird)
+            .await?;
+
+        let exists: bool = row.get(0);
+        Ok(exists)
+    }
+
+    pub async fn create_user(&self, user_id: &str, local_part: &str) -> Result<(), anyhow::Error> {
+
+        sqlx::query("INSERT INTO users (user_id, local_part) VALUES ($1, $2);")
+            .bind(user_id)
+            .bind(local_part)
+            .execute(&self.matrixbird)
+            .await?;
+
+        Ok(())
+    }
+
+
+    pub async fn add_email(&self, user_id: &str, email: &str) -> Result<(), anyhow::Error> {
+
+        let now = Utc::now().timestamp();
+
+        sqlx::query("INSERT INTO user_threepids (user_id, medium, address, validated_at, added_at) VALUES ($1, $2, $3, $4, $5)")
+            .bind(user_id)
+            .bind("email")
+            .bind(email)
+            .bind(now)
+            .bind(now)
+            .execute(&self.synapse)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn get_user_id_from_email(&self, email: &str) -> Result<Option<String>, anyhow::Error> {
+
+        let row = sqlx::query("SELECT user_id FROM user_threepids WHERE address = $1 and medium='email';")
+            .bind(email)
+            .fetch_one(&self.synapse)
+            .await?;
+
+        Ok(row.try_get("user_id").ok())
+    }
+
+    pub async fn get_email_from_user_id(&self, user_id: &str) -> Result<Option<String>, anyhow::Error> {
+
+        let row = sqlx::query("SELECT address FROM user_threepids WHERE user_id = $1 and medium='email';")
+            .bind(user_id)
+            .fetch_one(&self.synapse)
+            .await?;
+
+        Ok(row.try_get("address").ok())
+    }
+
+}
