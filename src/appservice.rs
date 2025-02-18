@@ -380,6 +380,7 @@ impl AppService {
             from,
             subject: Some(String::from("Welcome to Matrixbird!")),
             date,
+            attachments: None,
         };
 
         let raw_event = ruma::serde::Raw::new(&em_cont)?;

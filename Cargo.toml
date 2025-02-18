@@ -5,6 +5,7 @@ authors = ["ChurchOfTheSubgenius <mail@hummingbard.com>"]
 edition = "2021"
 
 [dependencies]
+ammonia = "4.0.0"
 anyhow = "1.0.93"
 async-trait = "0.1.86"
 axum = { version = "0.7.9", features = ["macros"] }

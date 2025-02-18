@@ -12,6 +12,9 @@ use chrono::{DateTime, Utc};
 
 use serde::{Deserialize, Serialize};
 
+use ammonia::clean;
+
+
 
 use crate::AppState;
 use crate::error::AppserviceError;
@@ -38,6 +41,8 @@ pub struct EmailContent {
     pub from: Address,
     pub subject: Option<String>,
     pub date: DateTime<Utc>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub attachments: Option<Vec<Attachment>>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -231,9 +236,15 @@ async fn process_email(
     };
 
     let ev_type = MessageLikeEventType::from("matrixbird.email.legacy");
+
+    let safe_html = match payload.content.html.clone() {
+        Some(html) => clean(&html),
+        None => "".to_string(),
+    };
+
     let email_body = EmailBody {
         text: payload.content.text.clone(),
-        html: payload.content.html.clone(),
+        html: Some(safe_html),
     };
     let email_content = EmailContent {
         message_id: payload.message_id.clone(),
@@ -241,6 +252,8 @@ async fn process_email(
         from: payload.from.clone(),
         subject: payload.subject.clone(),
         date: payload.date.clone(),
+        attachments: payload.attachments.clone(),
+
     };
 
     // Create and send the message
