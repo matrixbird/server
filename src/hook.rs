@@ -12,7 +12,7 @@ use chrono::{DateTime, Utc};
 
 use serde::{Deserialize, Serialize};
 
-use ammonia::clean;
+//use ammonia::clean;
 
 
 
@@ -237,14 +237,17 @@ async fn process_email(
 
     let ev_type = MessageLikeEventType::from("matrixbird.email.legacy");
 
+    /*
     let safe_html = match payload.content.html.clone() {
         Some(html) => clean(&html),
         None => "".to_string(),
     };
+    */
 
     let email_body = EmailBody {
         text: payload.content.text.clone(),
-        html: Some(safe_html),
+        html: payload.content.html.clone(),
+        //html: Some(safe_html),
     };
     let email_content = EmailContent {
         message_id: payload.message_id.clone(),

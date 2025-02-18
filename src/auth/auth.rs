@@ -589,23 +589,21 @@ pub async fn request_invite(
 
     println!("Request invite for email: {}", email);
 
-    let reject = state.email_providers.reject(
-        email.clone().as_str()
-    ).await;
+    tokio::spawn(async move {
+        let reject = state.email_providers.reject(
+            email.clone().as_str()
+        ).await;
 
-    if reject {
-        return Ok(Json(json!({
-            "success": false,
-            "error": "Email provider not allowed."
-        })))
-    }
+        if !reject {
+            if let Ok(()) = state.db.add_invite(
+                email.clone().as_str(),
+                generate_invite_code().as_str()
+            ).await{
+                println!("Stored user invite");
+            }
+        }
 
-    if let Ok(()) = state.db.add_invite(
-        email.clone().as_str(),
-        generate_invite_code().as_str()
-    ).await{
-        println!("Stored user invite");
-    }
+    });
 
 
     Ok(Json(json!({
