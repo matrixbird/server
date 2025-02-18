@@ -119,16 +119,11 @@ pub async fn transactions(
                     ).await {
                         println!("Send Welcome Message: {:#?}", res);
                     };
-
-
-
                 }
 
                 if let Some(body) = state.templates.get("welcome_email.html") {
                     let localpart = sender.localpart().to_owned();
-
                     let to = format!("{}@matrixbird.com", localpart);
-
                     let res = state.email.send_email(
                         &to,
                         body,
@@ -140,8 +135,6 @@ pub async fn transactions(
                         Err(e) => eprintln!("Error sending email: {}", e),
                     }
                 }
-
-
 
             }
             MembershipState::Leave => {

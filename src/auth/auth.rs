@@ -565,7 +565,6 @@ pub async fn validate_session(
 */
 
         if valid {
-            println!("Session is valid");
             return Ok(Json(json!({
                 "valid": true,
                 "access_token": session.access_token,
