@@ -21,15 +21,13 @@ use crate::error::AppserviceError;
 
 use crate::utils::get_localpart;
 
+use crate::tasks;
+
 use ruma::{
-    RoomAliasId,
     api::client::account::get_username_availability,
-    events::{
-        AnyMessageLikeEventContent, 
-        MessageLikeEventType,
-        macros::EventContent,
-    }
+    events::macros::EventContent,
 };
+
 pub type HttpClient = ruma::client::http_client::HyperNativeTls;
 
 
@@ -73,7 +71,7 @@ pub struct EmailRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub subject: Option<String>,
     pub date: DateTime<Utc>,
-    //pub headers: Vec<Header>,
+    pub headers: Vec<Header>,
     pub content: Content,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub attachments: Option<Vec<Attachment>>,
@@ -114,10 +112,6 @@ pub struct Attachment {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub encoding: Option<String>,
 }
-
-
-
-
 
 
 #[derive(Debug, Deserialize)]
@@ -186,106 +180,18 @@ impl HookResponse {
     }
 }
 
-async fn process_email(
-    state: Arc<AppState>,
-    payload: &EmailRequest,
-    user: &str,
-) {
-    // Store email data first - independent operation
-    let store_result = match serde_json::to_value(payload) {
-        Ok(email_json) => {
-            state.db.store_email_data(
-                payload.message_id.as_str(),
-                payload.envelope_from.as_str(),
-                payload.envelope_to.as_str(),
-                email_json,
-            ).await
-        }
-        Err(e) => {
-            tracing::error!("Failed to serialize email: {}", e);
-            return;
-        }
-    };
-
-    if let Err(e) = store_result {
-        tracing::error!("Failed to store email: {}", e);
-        return;
-    }
-    tracing::info!("Email stored successfully");
-
-    // Try to send Matrix message
-    let server_name = state.config.matrix.server_name.clone();
-    let raw_alias = format!("#{}:{}", user, server_name);
-    
-    // Early return if we can't parse the alias
-    let alias = match RoomAliasId::parse(&raw_alias) {
-        Ok(alias) => alias,
-        Err(e) => {
-            tracing::error!("Failed to parse room alias: {}", e);
-            return;
-        }
-    };
-
-    // Early return if we can't get the room ID
-    let room_id = match state.appservice.room_id_from_alias(alias).await {
-        Some(id) => id,
-        None => {
-            tracing::error!("Failed to get room ID for alias");
-            return;
-        }
-    };
-
-    let ev_type = MessageLikeEventType::from("matrixbird.email.legacy");
-
-    /*
-    let safe_html = match payload.content.html.clone() {
-        Some(html) => clean(&html),
-        None => "".to_string(),
-    };
-    */
-
-    let email_body = EmailBody {
-        text: payload.content.text.clone(),
-        html: payload.content.html.clone(),
-        //html: Some(safe_html),
-    };
-    let email_content = EmailContent {
-        message_id: payload.message_id.clone(),
-        body: email_body,
-        from: payload.from.clone(),
-        subject: payload.subject.clone(),
-        date: payload.date.clone(),
-        attachments: payload.attachments.clone(),
-
-    };
-
-    // Create and send the message
-    let raw_event = match ruma::serde::Raw::new(&email_content) {
-        Ok(raw) => raw.cast::<AnyMessageLikeEventContent>(),
-        Err(e) => {
-            tracing::error!("Failed to create raw event: {}", e);
-            return;
-        }
-    };
-
-    if let Err(e) = state.appservice.send_message(ev_type, room_id, raw_event).await {
-        tracing::error!("Failed to send Matrix message: {}", e);
-        return;
-    }
-
-    if let Err(e) = state.db.set_email_processed(&payload.message_id).await {
-        tracing::error!("Failed to mark email as processed: {}", e);
-        return;
-    }
-
-    tracing::info!("Email processed and message sent successfully");
-}
 
 pub async fn hook(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<EmailRequest>,
 ) -> Json<HookResponse> {
-    tracing::info!("Incoming email: {:?}", payload);
+
+    tracing::info!("Incoming email");
+    tracing::info!("Message ID: {:?}", payload.message_id);
+    tracing::info!("From: {:?}", payload.envelope_from);
+    tracing::info!("To: {:?}", payload.envelope_to);
+    tracing::info!("Subject: {:?}", payload.subject);
+    tracing::info!("Date: {:?}", payload.date);
 
     // Early return for postmaster or invalid localpart
     let (user, tag) = match get_localpart(payload.envelope_to.clone()) {
@@ -322,7 +228,7 @@ pub async fn hook(
         tracing::info!("User exists: {}", mxid);
         let state_clone = state.clone();
         tokio::spawn(async move {
-            process_email(state_clone, &payload, &user).await;
+            tasks::process_email(state_clone, &payload, &user).await;
         });
         
         return Json(HookResponse::accept())

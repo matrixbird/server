@@ -352,6 +352,7 @@ impl AppService {
     pub async fn send_welcome_message(
         &self, 
         room_id: OwnedRoomId, 
+        subject: String,
         body: String,
     ) 
     -> Result<OwnedEventId, anyhow::Error> {
@@ -364,7 +365,7 @@ impl AppService {
 
         let from = Address{
             name: Some(String::from("Matrixbird")),
-            address: String::from("welcome@matrixbird.com")
+            address: String::from("matrixbird@matrixbird.com")
         };
 
         let date = Utc::now();
@@ -378,7 +379,7 @@ impl AppService {
             message_id,
             body,
             from,
-            subject: Some(String::from("Welcome to Matrixbird!")),
+            subject: Some(subject),
             date,
             attachments: None,
         };

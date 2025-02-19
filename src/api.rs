@@ -26,6 +26,8 @@ use tracing::info;
 use crate::AppState;
 use crate::middleware::Data;
 
+use crate::tasks;
+
 pub async fn transactions(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<Value>,
@@ -110,31 +112,22 @@ pub async fn transactions(
         match membership {
             MembershipState::Invite => {
                 info!("Joining room: {}", room_id);
+
                 state.appservice.join_room(room_id.clone()).await;
 
-                if let Some(body) = state.templates.get("welcome_matrix.html") {
-                    if let Ok(res) = state.appservice.send_welcome_message(
+                let localpart = sender.localpart().to_owned();
+
+                let state_clone = state.clone();
+
+                // Send welcome emails and messages
+                tokio::spawn(async move {
+                    tasks::send_welcome(
+                        state_clone, 
+                        &localpart,
                         room_id,
-                        body.clone().to_string(),
-                    ).await {
-                        println!("Send Welcome Message: {:#?}", res);
-                    };
-                }
-
-                if let Some(body) = state.templates.get("welcome_email.html") {
-                    let localpart = sender.localpart().to_owned();
-                    let to = format!("{}@matrixbird.com", localpart);
-                    let res = state.email.send_email(
-                        &to,
-                        body,
-                        "Welcome to MatrixBird",
                     ).await;
+                });
 
-                    match res {
-                        Ok(r) => println!("Email sent: {:#?}", r),
-                        Err(e) => eprintln!("Error sending email: {}", e),
-                    }
-                }
 
             }
             MembershipState::Leave => {

@@ -6,6 +6,7 @@ pub mod hook;
 pub mod ping;
 pub mod api;
 pub mod rooms;
+pub mod tasks;
 pub mod auth;
 pub mod middleware;
 pub mod templates;

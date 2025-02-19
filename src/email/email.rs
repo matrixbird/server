@@ -85,7 +85,7 @@ impl EmailClient {
             .await?;
 
         let result = response.json::<PostmarkResponse>().await?;
-        println!("Response: {:#?}", result);
+        tracing::info!("Postmark response: {:#?}", result);
         
         Ok(result)
     }
@@ -117,10 +117,8 @@ impl EmailClient {
             .send()
             .await?;
 
-        println!("Response: {:#?}", response);
-
         let result = response.json::<PostmarkResponse>().await?;
-        println!("Response: {:#?}", result);
+        tracing::info!("Postmark response: {:#?}", result);
         
         Ok(result)
     }
