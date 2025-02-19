@@ -13,6 +13,7 @@ pub struct Config {
     pub cache: Cache,
     pub features: Features,
     pub email: Email,
+    pub authentication: Authentication,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -80,6 +81,13 @@ pub struct RedisDB {
     #[serde(default = "default_cache_ttl")]
     pub ttl: u64,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Authentication {
+    pub invite_code: Option<String>,
+}
+
+
 
 
 fn default_pool_size() -> u32 {
