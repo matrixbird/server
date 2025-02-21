@@ -118,7 +118,7 @@ pub async fn send_welcome(
 ) {
 
     if let Some(body) = state.templates.get("welcome_matrix.html") {
-        let subject = String::from("Welcome to MatrixBird");
+        let subject = String::from("Welcome to Matrixbird");
         if let Ok(res) = state.appservice.send_welcome_message(
             room_id,
             subject,
