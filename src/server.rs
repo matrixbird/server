@@ -24,12 +24,7 @@ use http::header::CONTENT_TYPE;
 use anyhow;
 
 use crate::config::Config;
-use crate::rooms::{public_rooms, room_info};
-use crate::middleware::{
-    authenticate_homeserver,
-    validate_public_room,
-    validate_room_id,
-};
+use crate::middleware::authenticate_homeserver;
 
 use crate::ping::ping;
 use crate::hook::{invite_hook, hook};
@@ -45,10 +40,7 @@ use crate::auth::{
     validate_invite_code
 };
 
-use crate::api::{
-    transactions,
-    matrix_proxy,
-};
+use crate::api::transactions;
 
 pub struct Server{
     state: Arc<AppState>,
@@ -93,32 +85,6 @@ impl Server {
             .route("/transactions/:txn_id", put(transactions))
             .route_layer(middleware::from_fn_with_state(self.state.clone(), authenticate_homeserver));
 
-        let room_routes_inner = Router::new()
-            .route("/state", get(matrix_proxy))
-            .route("/messages", get(matrix_proxy))
-            .route("/info", get(room_info))
-            .route("/joined_members", get(matrix_proxy))
-            .route("/aliases", get(matrix_proxy))
-            .route("/event/*path", get(matrix_proxy))
-            .route("/context/*path", get(matrix_proxy))
-            .route("/timestamp_to_event", get(matrix_proxy));
-
-        let room_routes = Router::new()
-            .nest("/:room_id", room_routes_inner)
-            .route_layer(middleware::from_fn_with_state(self.state.clone(), validate_public_room))
-            .route_layer(middleware::from_fn_with_state(self.state.clone(), validate_room_id));
-
-        let more_room_routes = Router::new()
-            .route("/hierarchy", get(matrix_proxy))
-            .route("/threads", get(matrix_proxy))
-            .route("/relations/*path", get(matrix_proxy))
-            .route_layer(middleware::from_fn_with_state(self.state.clone(), validate_public_room))
-            .route_layer(middleware::from_fn_with_state(self.state.clone(), validate_room_id));
-
-        let public_rooms_route = Router::new()
-            .route("/", get(public_rooms));
-            //.route_layer(middleware::from_fn_with_state(self.state.clone(), public_rooms_cache));
-
         let auth_routes = Router::new()
             .route("/login", post(login))
             .route("/signup", post(signup))
@@ -132,9 +98,6 @@ impl Server {
 
         let app = Router::new()
             .nest("/_matrix/app/v1", service_routes)
-            .nest("/_matrix/client/v3/rooms", room_routes)
-            .nest("/_matrix/client/v1/rooms/:rood_id", more_room_routes)
-            .nest("/publicRooms", public_rooms_route)
             .route("/hook/invite", post(invite_hook))
             .route("/hook", post(hook))
             .nest("/auth", auth_routes)

@@ -10,7 +10,6 @@ impl EmailTemplates {
     pub fn new() -> Result<Self, anyhow::Error> {
         let tera = Tera::new("templates/**/*.html")?;
         
-        // Load all templates at startup into memory
         let templates = tera.get_template_names()
             .map(|name| {
                 let content = tera.render(name, &tera::Context::new())

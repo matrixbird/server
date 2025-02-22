@@ -24,7 +24,6 @@ use ruma::{
             leave_room
         },
         profile::get_profile,
-        space::{get_hierarchy, SpaceHierarchyRoomsChunk}
     },
     events::{
         AnyMessageLikeEventContent, 
@@ -32,20 +31,12 @@ use ruma::{
         AnyTimelineEvent,
         AnyStateEvent, 
         StateEventType,
-        room::{
-            name::RoomNameEventContent,
-            canonical_alias::RoomCanonicalAliasEventContent,
-            avatar::RoomAvatarEventContent,
-            topic::RoomTopicEventContent,
-        }
     }
 };
 
 use uuid::Uuid;
 
 use anyhow;
-
-use serde::{Serialize, Deserialize};
 
 use crate::hook::{EmailBody, EmailContent, Address};
 
@@ -60,11 +51,6 @@ pub struct AppService {
 
 pub type RoomState = Vec<ruma::serde::Raw<AnyStateEvent>>;
 
-#[derive(Clone)]
-pub struct JoinedRoomState {
-    pub room_id: OwnedRoomId,
-    pub state: Option<RoomState>,
-}
 
 impl AppService {
     pub async fn new(config: &Config) -> Result<Self, anyhow::Error> {
@@ -189,41 +175,6 @@ impl AppService {
         Some(room_id.room_id)
     }
 
-    pub async fn joined_rooms_state(&self) -> Result<Vec<JoinedRoomState>, anyhow::Error> {
-
-        let mut joined_rooms: Vec<JoinedRoomState> = Vec::new();
-
-        let jr = self.client
-            .send_request(joined_rooms::v3::Request::new())
-            .await
-            .map_err(|e| anyhow::anyhow!("Error getting joined rooms: {}", e))?;
-
-        if jr.joined_rooms.len() == 0 {
-            return Ok(joined_rooms);
-        }
-
-        for room_id in jr.joined_rooms {
-
-            let mut jrs = JoinedRoomState {
-                room_id: room_id.clone(),
-                state: None,
-            };
-
-
-            let st = self.client
-                .send_request(get_state_events::v3::Request::new(
-                    room_id,
-                ))
-                .await?;
-
-            jrs.state = Some(st.room_state);
-
-            joined_rooms.push(jrs);
-
-        }
-
-        Ok(joined_rooms)
-    }
 
     pub async fn get_room_event(&self, room_id: OwnedRoomId, event_id: OwnedEventId) -> Option<ruma::serde::Raw<AnyTimelineEvent>> {
 
@@ -252,78 +203,6 @@ impl AppService {
         Some(profile)
     }
 
-    pub async fn get_room_summary(&self, room_id: OwnedRoomId) ->
-    Option<RoomSummary> {
-
-        let mut room_info = RoomSummary {
-            room_id: room_id.to_string(),
-            ..Default::default()
-        };
-
-        let state = self.client
-            .send_request(get_state_events::v3::Request::new(
-                room_id,
-            ))
-            .await
-            .ok()?;
-
-        for state_event in state.room_state {
-
-            let event_type = match state_event.get_field::<String>("type") {
-                Ok(Some(t)) => t,
-                Ok(None) => {
-                    continue;
-                }
-                Err(_) => {
-                    continue;
-                }
-            };
-
-            if event_type == "m.room.name" {
-                if let Ok(Some(content)) = state_event.get_field::<RoomNameEventContent>("content") {
-                    room_info.name = Some(content.name.to_string());
-                };
-            }
-
-            if event_type == "m.room.canonical_alias" {
-                if let Ok(Some(content)) = state_event.get_field::<RoomCanonicalAliasEventContent>("content") {
-                    room_info.canonical_alias = content.alias.map(|a| a.to_string());
-                };
-            }
-
-            if event_type == "m.room.avatar" {
-                if let Ok(Some(content)) = state_event.get_field::<RoomAvatarEventContent>("content") {
-                    room_info.avatar_url = content.url.map(|u| u.to_string());
-                };
-            }
-
-            if event_type == "commune.room.banner" {
-                if let Ok(Some(content)) = state_event.get_field::<RoomAvatarEventContent>("content") {
-                    room_info.banner_url = content.url.map(|u| u.to_string());
-                };
-            }
-
-            if event_type == "m.room.topic" {
-                if let Ok(Some(content)) = state_event.get_field::<RoomTopicEventContent>("content") {
-                    room_info.topic = Some(content.topic.to_string());
-                };
-            }
-        }
-
-        Some(room_info)
-    }
-
-    pub async fn get_room_hierarchy(&self, room_id: OwnedRoomId) -> Option<Vec<SpaceHierarchyRoomsChunk>> {
-
-        let hierarchy = self.client
-            .send_request(get_hierarchy::v1::Request::new(
-                room_id
-            ))
-            .await
-            .ok()?;
-
-        Some(hierarchy.rooms)
-    }
 
     pub async fn send_message(
         &self, 
@@ -405,20 +284,5 @@ impl AppService {
         Ok(response.event_id)
     }
 
-}
-
-#[derive(Default, Debug, Deserialize, Serialize)]
-pub struct RoomSummary {
-    pub room_id: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub canonical_alias: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub avatar_url: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub banner_url: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub topic: Option<String>,
 }
 
