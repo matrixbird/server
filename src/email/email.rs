@@ -93,12 +93,13 @@ impl EmailClient {
     pub async fn send_email(
         &self,
         to: &str,
+        sender: Option<&str>,
         template: &str,
         subject: &str,
     ) -> Result<PostmarkResponse> {
         let client = Client::new();
 
-        let email = EmailRequest {
+        let mut email = EmailRequest {
             from: self.account.to_string(),
             to: to.to_string(),
             template_alias: None,
@@ -107,6 +108,13 @@ impl EmailClient {
             subject: Some(subject.to_string()),
             message_stream: Some("outbound".to_string()),
         };
+
+        match sender {
+            Some(sender) => {
+                email.from = sender.to_string();
+            }
+            None => {}
+        }
 
         let response = client
             .post("https://api.postmarkapp.com/email")

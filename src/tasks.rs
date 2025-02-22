@@ -1,4 +1,6 @@
 use std::sync::Arc;
+use tokio::time::{sleep, Duration};
+
 
 use ruma::{
     RoomAliasId,
@@ -120,7 +122,7 @@ pub async fn send_welcome(
     if let Some(body) = state.templates.get("welcome_matrix.html") {
         let subject = String::from("Welcome to Matrixbird");
         if let Ok(res) = state.appservice.send_welcome_message(
-            room_id,
+            room_id.clone(),
             subject,
             body.clone().to_string(),
         ).await {
@@ -133,8 +135,9 @@ pub async fn send_welcome(
         let to = format!("{}@matrixbird.com", local_part);
         let res = state.email.send_email(
             &to,
+            Some("welcome@matrixbird.org"),
             body,
-            "Welcome to MatrixBird",
+            "Welcome to Matrixbird",
         ).await;
 
         match res {
@@ -146,4 +149,18 @@ pub async fn send_welcome(
             }
         }
     }
+
+    sleep(Duration::from_secs(3)).await;
+
+    if let Some(body) = state.templates.get("what_is_matrixbird.html") {
+        let subject = String::from("What is Matrixbird?");
+        if let Ok(res) = state.appservice.send_welcome_message(
+            room_id,
+            subject,
+            body.clone().to_string(),
+        ).await {
+            tracing::info!("Welcome event sent - event ID: {:#?}", res);
+        };
+    }
+
 }

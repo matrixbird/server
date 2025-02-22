@@ -78,8 +78,7 @@ pub struct RedisDB {
     pub pool_size: u32,
     #[serde(default = "default_timeout_secs")]
     pub timeout_secs: u64,
-    #[serde(default = "default_cache_ttl")]
-    pub ttl: u64,
+    pub ttl: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

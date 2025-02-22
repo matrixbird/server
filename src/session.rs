@@ -13,7 +13,7 @@ use crate::utils::generate_magic_code;
 #[derive(Clone)]
 pub struct SessionStore {
     pub client: redis::Client,
-    pub ttl: u64,
+    pub ttl: Option<u64>,
 }
 
 impl SessionStore {
@@ -32,11 +32,22 @@ impl SessionStore {
         let session = Session::new(user_id, access_token, device_id);
         
         let serialized = serde_json::to_string(&session)?;
-        // Store session with TTL
-        let () = conn.set(
-            session_id.clone(),
-            serialized,
-        ).await?;
+
+        match self.ttl {
+            Some(ttl) => {
+                let () = conn.set_ex(
+                    session_id.clone(),
+                    serialized,
+                    ttl,
+                ).await?;
+            },
+            None => {
+                let () = conn.set(
+                    session_id.clone(),
+                    serialized,
+                ).await?;
+            }
+        }
         
         Ok(session_id)
     }
@@ -74,12 +85,22 @@ impl SessionStore {
 
             let serialized = serde_json::to_string(&session)?;
             
-            // Reset TTL and update last_access
-            let () = conn.set_ex(
-                session_id,
-                serialized,
-                self.ttl,
-            ).await?;
+            match self.ttl {
+                Some(ttl) => {
+                    let () = conn.set_ex(
+                        session_id,
+                        serialized,
+                        ttl,
+                    ).await?;
+                },
+                None => {
+                    let () = conn.set(
+                        session_id,
+                        serialized,
+                    ).await?;
+                }
+            }
+
             
             Ok((true, Some(session)))
         } else {
