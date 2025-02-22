@@ -3,7 +3,7 @@ use axum::{
     routing::{get, put, post},
     http::HeaderValue,
     extract::{Request, State},
-    response::IntoResponse,
+    response::{IntoResponse, Redirect},
     Json,
     Router,
     ServiceExt
@@ -101,7 +101,8 @@ impl Server {
             .route("/hook/invite", post(invite_hook))
             .route("/hook", post(hook))
             .nest("/auth", auth_routes)
-            .route("/", get(health))
+            .route("/health", get(health))
+            .route("/", get(index))
             .layer(self.setup_cors(&self.state.config))
             .layer(TraceLayer::new_for_http())
             .with_state(self.state.clone());
@@ -139,5 +140,13 @@ pub async fn health(
         "healthy": true,
         "features": state.config.features,
     })))
+}
+
+pub async fn index(
+    State(state): State<Arc<AppState>>,
+) -> Redirect {
+    let domain = state.config.matrix.server_name.clone();
+    let url = format!("https://{}", domain);
+    Redirect::temporary(&url)
 }
 
