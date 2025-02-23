@@ -100,16 +100,6 @@ fn default_timeout_secs() -> u64 {
     5
 }
 
-fn default_cache_ttl() -> u64 {
-    300 
-}
-
-fn default_false() -> bool {
-    false
-}
-
-
-
 
 impl Config {
     pub fn new(path: impl AsRef<Path>) -> Self {
