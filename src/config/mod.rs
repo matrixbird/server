@@ -10,7 +10,6 @@ pub struct Config {
     pub appservice: AppService,
     pub matrix: Matrix,
     pub redis: Redis,
-    pub cache: Cache,
     pub features: Features,
     pub email: Email,
     pub mailer: Mailer,
@@ -110,20 +109,6 @@ fn default_false() -> bool {
 }
 
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Cache {
-    pub public_rooms: CacheOptions,
-    pub room_state: CacheOptions,
-    pub messages: CacheOptions,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CacheOptions {
-    #[serde(default = "default_false")]
-    pub enabled: bool,
-    #[serde(default = "default_cache_ttl")]
-    pub expire_after: u64,
-}
 
 
 impl Config {
