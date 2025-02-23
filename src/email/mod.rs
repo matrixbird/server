@@ -1,5 +1,5 @@
-mod email;
-pub use email::*;
+mod mailer;
+pub use mailer::*;
 
 mod providers;
 pub use providers::*;

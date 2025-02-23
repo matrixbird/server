@@ -13,6 +13,7 @@ pub struct Config {
     pub cache: Cache,
     pub features: Features,
     pub email: Email,
+    pub mailer: Mailer,
     pub authentication: Authentication,
 }
 
@@ -31,11 +32,14 @@ pub struct Features {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Email {
+    pub domain: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Mailer {
     pub api_token: String,
     pub account: String,
 }
-
-
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DB {

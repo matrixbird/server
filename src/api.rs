@@ -31,7 +31,7 @@ pub async fn transactions(
     };
 
     for event in events {
-        //println!("Event: {:#?}", event);
+        println!("Event: {:#?}", event);
 
         if let Ok(_serialized) = serde_json::to_string(event) {
             //println!("Serialized: {:#?}", serialized);

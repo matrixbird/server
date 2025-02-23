@@ -428,7 +428,7 @@ pub async fn verify_email(
         payload.client_secret.clone()
     ).await {
 
-        if let Ok(res) = state.email.send_email_template(
+        if let Ok(res) = state.mailer.send_email_template(
             &payload.email,
             &code,
             "verification-code"

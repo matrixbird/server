@@ -145,7 +145,7 @@ pub async fn invite_hook(
         println!("Stored user invite");
     }
 
-    if let Ok(res) = state.email.send_email_template(
+    if let Ok(res) = state.mailer.send_email_template(
         &payload.envelope_from,
         &code,
         "invite"

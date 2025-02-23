@@ -40,12 +40,12 @@ pub struct PostmarkResponse {
 }
 
 #[derive(Debug, Clone)]
-pub struct EmailClient {
+pub struct Mailer {
     api_token: String,
     account: String,
 }
 
-impl EmailClient {
+impl Mailer {
     pub fn new(api_token: &str, account: &str) -> Self {
         Self {
             api_token: api_token.to_string(),

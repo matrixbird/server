@@ -2,7 +2,7 @@
 name = "matrixbird"
 version = "0.1.0"
 authors = ["ChurchOfTheSubgenius <mail@hummingbard.com>"]
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 ammonia = "4.0.0"

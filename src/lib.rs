@@ -30,7 +30,7 @@ pub struct AppState {
     pub transaction_store: ping::TransactionStore,
     pub cache: redis::Client,
     pub session: session::SessionStore,
-    pub email: email::EmailClient,
+    pub mailer: email::Mailer,
     pub email_providers: email::EmailProviders,
     pub templates: templates::EmailTemplates,
 }
@@ -56,9 +56,9 @@ impl AppState {
             println!("does user exist? {:?}", exists);
         }
 
-        let email_client = email::EmailClient::new(
-            &config.email.api_token,
-            &config.email.account,
+        let mailer = email::Mailer::new(
+            &config.mailer.api_token,
+            &config.mailer.account,
         );
 
         let templates = templates::EmailTemplates::new()?;
@@ -74,7 +74,7 @@ impl AppState {
             transaction_store,
             cache: cache.client,
             session,
-            email: email_client,
+            mailer,
             email_providers: providers,
             templates,
         }))
