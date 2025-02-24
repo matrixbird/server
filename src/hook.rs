@@ -227,9 +227,9 @@ pub async fn hook(
         // we'll accept emails for non-existing users if they come from out postmark saas, in order
         // to reduce hard bounces and getting flagged on their platform
         //
-        if let Ok(subdomain) = get_email_subdomain(&payload.envelope_from) {
-            if subdomain == "pm-bounces" && 
-                user == "pm_bounces" {
+        if let (Some((localpart, _)), Ok(subdomain)) = (get_localpart(payload.envelope_from.clone()), get_email_subdomain(&payload.envelope_from)) {
+
+            if localpart == "pm_bounces".to_string() && subdomain == "pm-bounces" {
                 tracing::info!("Email from postmarkapp.com, accepting email for non-existing user");
                 return Json(HookResponse::accept())
             }
