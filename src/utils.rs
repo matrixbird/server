@@ -121,18 +121,51 @@ pub fn construct_matrix_id(input: &str, homeserver: &str) -> Option<String> {
     }
 }
 
+pub fn get_email_domain(email: &str) -> Result<&str, anyhow::Error> {
+    let parts: Vec<&str> = email.split('@').collect();
+    match parts.as_slice() {
+        [_, domain] if !domain.is_empty() => Ok(*domain),
+        _ => Err(anyhow::Error::msg("Invalid email format")),
+    }
+}
+
+
+pub fn get_email_subdomain(email: &str) -> Result<&str, anyhow::Error> {
+    let parts: Vec<&str> = email.split('@').collect();
+    match parts.as_slice() {
+        [_, domain] if !domain.is_empty() => {
+            let domain_parts: Vec<&str> = domain.trim().split('.').collect();
+            domain_parts.first().ok_or(anyhow::Error::msg("No subdomain found")).copied()
+        }
+        _ => Err(anyhow::Error::msg("Invalid email format")),
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
+    #[test]
+    fn test_valid_email() {
+        assert_eq!(get_email_subdomain("user@pm-bounces.matrixbird.com").unwrap(), "pm-bounces");
+        assert_eq!(get_email_subdomain("user@pm-bounces.matrixbird.com ").unwrap(), "pm-bounces");
+    }
+
+    #[test]
+    fn test_invalid_email() {
+        assert!(get_email_subdomain("invalid.email").is_err());
+        assert!(get_email_subdomain("user@").is_err());
+    }
+
     #[test]
     fn test_get_localpart() {
-        assert_eq!(get_localpart("user@example.com"), Some(("user", None)));
-        assert_eq!(get_localpart("admin@matrix.org"), Some(("admin", None)));
-        assert_eq!(get_localpart("nobody"), Some(("nobody", None)));
-        assert_eq!(get_localpart("user+tag@example.com"), Some(("user", Some("tag"))));
+        assert_eq!(get_localpart("user@example.com".to_string()), Some(("user".to_string(), None)));
+        assert_eq!(get_localpart("admin@matrix.org".to_string()), Some(("admin".to_string(), None)));
+        assert_eq!(get_localpart("nobody".to_string()), Some(("nobody".to_string(), None)));
+        assert_eq!(get_localpart("user+tag@example.com".to_string()), Some(("user".to_string(), Some("tag".to_string()))));
     }
-    
+
     #[test]
     fn test_email_to_matrix_id() {
         assert_eq!(email_to_matrix_id("user@example.com"), Some("@user:example.com".to_string()));

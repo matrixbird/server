@@ -19,7 +19,7 @@ use serde::{Deserialize, Serialize};
 use crate::AppState;
 use crate::error::AppserviceError;
 
-use crate::utils::get_localpart;
+use crate::utils::{get_localpart, get_email_subdomain};
 
 use crate::tasks;
 
@@ -223,7 +223,21 @@ pub async fn hook(
 
     if let Ok(_) = client.send_request(av).await {
         tracing::error!("User does not exist: {}", mxid);
+
+        // we'll accept emails for non-existing users if they come from out postmark saas, in order
+        // to reduce hard bounces and getting flagged on their platform
+        //
+        if let Ok(subdomain) = get_email_subdomain(&payload.envelope_from) {
+            if subdomain == "pm-bounces" && 
+                user == "pm_bounces" {
+                tracing::info!("Email from postmarkapp.com, accepting email for non-existing user");
+                return Json(HookResponse::accept())
+            }
+        }
+
+
         return Json(HookResponse::reject())
+
     } else {
         tracing::info!("User exists: {}", mxid);
         let state_clone = state.clone();
