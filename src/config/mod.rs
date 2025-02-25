@@ -43,8 +43,7 @@ pub struct Mailer {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DB {
-    pub matrixbird: String,
-    pub synapse: String,
+    pub url: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -89,9 +88,6 @@ pub struct RedisDB {
 pub struct Authentication {
     pub invite_code: Option<String>,
 }
-
-
-
 
 fn default_pool_size() -> u32 {
     10

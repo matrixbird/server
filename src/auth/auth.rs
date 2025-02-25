@@ -220,25 +220,6 @@ pub async fn validate_session(
     ).await{
 
 
-
-        /*
-        if let Ok(token_exists) = state.db.synapse.access_token_valid(
-            session.user_id.clone().as_str(),
-            session.access_token.clone().as_str(),
-            &device_id
-        ).await{
-            println!("Stored user invite");
-
-            if valid && token_exists {
-                return Ok(Json(json!({
-                    "valid": true,
-                    "access_token": session.access_token,
-                    "user_id": session.user_id,
-                })));
-            }
-        }
-*/
-
         if valid {
             return Ok(Json(json!({
                 "valid": true,

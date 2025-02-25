@@ -9,7 +9,6 @@ pub mod tasks;
 pub mod auth;
 pub mod middleware;
 pub mod templates;
-pub mod cache;
 pub mod email;
 pub mod session;
 pub mod error;
@@ -29,15 +28,10 @@ pub struct AppState {
     pub proxy: ProxyClient,
     pub appservice: appservice::AppService,
     pub transaction_store: ping::TransactionStore,
-    pub cache: redis::Client,
     pub session: session::SessionStore,
     pub mailer: email::Mailer,
     pub email_providers: email::EmailProviders,
     pub templates: templates::EmailTemplates,
-}
-
-fn default_mode() -> String {
-    "production".to_string()
 }
 
 impl AppState {
@@ -48,18 +42,11 @@ impl AppState {
 
         let appservice = appservice::AppService::new(&config).await?;
 
-        let cache = cache::Cache::new(&config).await?;
         let session = session::SessionStore::new(&config).await?;
 
         let transaction_store = ping::TransactionStore::new();
 
         let db = db::Database::new(&config).await;
-
-        if let Ok(exists) = db.user_exists(
-            "@lolo:localhost:8480"
-        ).await{
-            println!("does user exist? {:?}", exists);
-        }
 
         let mailer = email::Mailer::new(
             &config.mailer.api_token,
@@ -67,7 +54,6 @@ impl AppState {
         );
 
         let templates = templates::EmailTemplates::new()?;
-
 
         let providers = email::EmailProviders::new("providers.json")?;
 
@@ -91,7 +77,6 @@ impl AppState {
             proxy: client,
             appservice,
             transaction_store,
-            cache: cache.client,
             session,
             mailer,
             email_providers: providers,

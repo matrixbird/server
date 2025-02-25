@@ -15,52 +15,25 @@ use crate::config::Config;
 
 #[derive(Clone)]
 pub struct Database {
-    pub synapse: PgPool,
-    pub matrixbird: PgPool,
+    pub pool: PgPool,
 }
 
 impl Database {
     pub async fn new(config: &Config) -> Self {
 
-        let synapse_db: PgPool;
-        let mut opts: PgConnectOptions = config.db.synapse.clone().parse().unwrap();
-        opts = opts.log_statements(log::LevelFilter::Debug);
-
-        let pool = PgPoolOptions::new()
-            .max_connections(20)
-            .min_connections(2)
-            .connect_with(opts)
-            .await;
-
-        match pool {
-            Ok(pool) => synapse_db = pool,
-            Err(e) => {
-                eprintln!("Database Error:\n");
-                // Print the error with full context
-                let mut error: &dyn std::error::Error = &e;
-                eprintln!("Error: {}", error);
-                while let Some(source) = error.source() {
-                    eprintln!("Caused by: {}", source);
-                    error = source;
-                }
-                eprintln!("\nSymposium cannot start without a valid database connection.");
-                process::exit(1);
-            }
-        }
-
-        let matrixbird_db: PgPool;
-        let mut opts: PgConnectOptions = config.db.matrixbird.clone().parse().unwrap();
+        let pool: PgPool;
+        let mut opts: PgConnectOptions = config.db.url.clone().parse().unwrap();
         opts = opts.log_statements(log::LevelFilter::Debug);
 
 
-        let pool = PgPoolOptions::new()
+        let pg_pool = PgPoolOptions::new()
             .max_connections(5)
             .min_connections(1)
             .connect_with(opts)
             .await;
 
-        match pool {
-            Ok(pool) => matrixbird_db = pool,
+        match pg_pool {
+            Ok(p) => pool = p,
             Err(e) => {
                 eprintln!("Database Error:\n");
                 // Print the error with full context
@@ -70,14 +43,13 @@ impl Database {
                     eprintln!("Caused by: {}", source);
                     error = source;
                 }
-                eprintln!("\nSymposium cannot start without a valid database connection.");
+                eprintln!("\nMatrixbird cannot start without a valid database connection.");
                 process::exit(1);
             }
         }
 
         Self {
-            synapse: synapse_db,
-            matrixbird: matrixbird_db,
+            pool,
         }
 
     }
@@ -96,7 +68,7 @@ impl Database {
             .bind(envelope_from)
             .bind(envelope_to)
             .bind(email_json)
-            .execute(&self.matrixbird)
+            .execute(&self.pool)
             .await?;
         Ok(())
     }
@@ -108,35 +80,10 @@ impl Database {
         sqlx::query("UPDATE emails SET processed = true, processed_at = $1 WHERE message_id = $2;")
             .bind(now)
             .bind(message_id)
-            .execute(&self.matrixbird)
+            .execute(&self.pool)
             .await?;
 
         Ok(())
-    }
-
-    pub async fn access_token_valid(
-        &self, 
-        user_id: &str,
-        access_token: &str,
-        device_id: &str
-    ) 
-    -> Result<bool, anyhow::Error>{
-
-
-        println!("Checking access token: {} for user: {} and device: {}", access_token, user_id, device_id);
-
-        let row = sqlx::query("SELECT EXISTS(SELECT 1 FROM access_tokens WHERE user_id = $1 and token = $2 and device_id = $3)")
-            .bind(user_id)
-            .bind(access_token)
-            .bind(device_id)
-            .fetch_one(&self.synapse)
-            .await?;
-
-        let exists: bool = row.get(0);
-
-        println!("Access token exists: {}", exists);
-
-        Ok(exists)
     }
 
     pub async fn add_invite(&self, email: &str, code: &str) -> Result<(), anyhow::Error> {
@@ -144,7 +91,7 @@ impl Database {
         sqlx::query("INSERT INTO invites (email, code) VALUES ($1, $2);")
             .bind(email)
             .bind(code)
-            .execute(&self.matrixbird)
+            .execute(&self.pool)
             .await?;
 
         Ok(())
@@ -154,7 +101,7 @@ impl Database {
 
         let row = sqlx::query("SELECT email FROM invites WHERE code = $1 and activated = false and invite_sent = true;")
             .bind(code)
-            .fetch_one(&self.matrixbird)
+            .fetch_one(&self.pool)
             .await?;
 
         Ok(row.try_get("email").ok())
@@ -170,7 +117,7 @@ impl Database {
             .bind(now)
             .bind(email)
             .bind(code)
-            .execute(&self.matrixbird)
+            .execute(&self.pool)
             .await?;
 
         Ok(())
@@ -181,9 +128,9 @@ impl Database {
 impl Database {
 
     pub async fn email_exists(&self, email: &str) -> Result<bool, anyhow::Error>{
-        let row = sqlx::query("SELECT EXISTS(SELECT 1 FROM user_threepids WHERE address = $1 and medium='email')")
+        let row = sqlx::query("SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)")
             .bind(email)
-            .fetch_one(&self.synapse)
+            .fetch_one(&self.pool)
             .await?;
 
         let exists: bool = row.get(0);
@@ -193,7 +140,7 @@ impl Database {
     pub async fn user_exists(&self, user_id: &str) -> Result<bool, anyhow::Error>{
         let row = sqlx::query("SELECT EXISTS(SELECT 1 FROM users WHERE user_id = $1 and active = true)")
             .bind(user_id)
-            .fetch_one(&self.matrixbird)
+            .fetch_one(&self.pool)
             .await?;
 
         let exists: bool = row.get(0);
@@ -205,7 +152,7 @@ impl Database {
         sqlx::query("INSERT INTO users (user_id, local_part) VALUES ($1, $2);")
             .bind(user_id)
             .bind(local_part)
-            .execute(&self.matrixbird)
+            .execute(&self.pool)
             .await?;
 
         Ok(())
@@ -214,24 +161,19 @@ impl Database {
 
     pub async fn add_email(&self, user_id: &str, email: &str) -> Result<(), anyhow::Error> {
 
-        let now = Utc::now().timestamp();
-
-        sqlx::query("INSERT INTO user_threepids (user_id, medium, address, validated_at, added_at) VALUES ($1, $2, $3, $4, $5)")
-            .bind(user_id)
-            .bind("email")
+        sqlx::query("UPDATE iusers SET email = $1 WHERE user_id = $2;")
             .bind(email)
-            .bind(now)
-            .bind(now)
-            .execute(&self.synapse)
+            .bind(user_id)
+            .execute(&self.pool)
             .await?;
         Ok(())
     }
 
     pub async fn get_user_id_from_email(&self, email: &str) -> Result<Option<String>, anyhow::Error> {
 
-        let row = sqlx::query("SELECT user_id FROM user_threepids WHERE address = $1 and medium='email';")
+        let row = sqlx::query("SELECT user_id FROM users WHERE email = $1;")
             .bind(email)
-            .fetch_one(&self.synapse)
+            .fetch_one(&self.pool)
             .await?;
 
         Ok(row.try_get("user_id").ok())
@@ -239,9 +181,9 @@ impl Database {
 
     pub async fn get_email_from_user_id(&self, user_id: &str) -> Result<Option<String>, anyhow::Error> {
 
-        let row = sqlx::query("SELECT address FROM user_threepids WHERE user_id = $1 and medium='email';")
+        let row = sqlx::query("SELECT email FROM users WHERE user_id = $1;")
             .bind(user_id)
-            .fetch_one(&self.synapse)
+            .fetch_one(&self.pool)
             .await?;
 
         Ok(row.try_get("address").ok())
