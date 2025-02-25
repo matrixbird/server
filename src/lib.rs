@@ -55,7 +55,7 @@ impl AppState {
 
         let templates = templates::EmailTemplates::new()?;
 
-        let providers = email::EmailProviders::new("providers.json")?;
+        let providers = email::EmailProviders::new("data/providers.json")?;
 
         let mode = match &config.mode {
             Some(mode) => {
