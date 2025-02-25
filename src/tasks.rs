@@ -130,25 +130,31 @@ pub async fn send_welcome(
         };
     }
 
-    if let Some(body) = state.templates.get("welcome_email.html") {
+    if !state.development_mode() {
 
-        let to = format!("{}@{}", local_part, state.config.email.domain);
-        let res = state.mailer.send_email(
-            &to,
-            Some("welcome@matrixbird.org"),
-            body,
-            "Welcome to Matrixbird",
-        ).await;
+        if let Some(body) = state.templates.get("welcome_email.html") {
 
-        match res {
-            Ok(r) => {
-                tracing::info!("Welcome email sent: {:#?}", r);
-            }
-            Err(e) => {
-                tracing::warn!("Failed to send welcome email: {:#?}", e);
+            let to = format!("{}@{}", local_part, state.config.email.domain);
+            let res = state.mailer.send_email(
+                &to,
+                Some("welcome@matrixbird.org"),
+                body,
+                "Welcome to Matrixbird",
+            ).await;
+
+            match res {
+                Ok(r) => {
+                    tracing::info!("Welcome email sent: {:#?}", r);
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to send welcome email: {:#?}", e);
+                }
             }
         }
+    } else {
+        tracing::info!("Development mode: Skipping welcome email");
     }
+
 
     sleep(Duration::from_secs(3)).await;
 

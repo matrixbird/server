@@ -5,6 +5,7 @@ use std::path::Path;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
+    pub mode: Option<String>,
     pub server: Server,
     pub db: DB,
     pub appservice: AppService,

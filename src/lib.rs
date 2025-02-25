@@ -23,6 +23,7 @@ pub type ProxyClient = hyper_util::client::legacy::Client<HttpConnector, Body>;
 
 #[derive(Clone)]
 pub struct AppState {
+    pub mode: String,
     pub config: config::Config,
     pub db: db::Database,
     pub proxy: ProxyClient,
@@ -33,6 +34,10 @@ pub struct AppState {
     pub mailer: email::Mailer,
     pub email_providers: email::EmailProviders,
     pub templates: templates::EmailTemplates,
+}
+
+fn default_mode() -> String {
+    "production".to_string()
 }
 
 impl AppState {
@@ -66,7 +71,21 @@ impl AppState {
 
         let providers = email::EmailProviders::new("providers.json")?;
 
+        let mode = match &config.mode {
+            Some(mode) => {
+                if mode == "development" {
+                    "development".to_string()
+                } else {
+                    "production".to_string()
+                }
+            }
+            None => "production".to_string(),
+        };
+
+        println!("Running in {} mode", mode);
+
         Ok(Arc::new(Self {
+            mode,
             config,
             db,
             proxy: client,
@@ -83,6 +102,10 @@ impl AppState {
     pub async fn mxid_from_localpart(&self, localpart: &str) -> Result<String, anyhow::Error> {
         let user_id = format!("@{}:{}", localpart, self.config.matrix.server_name);
         Ok(user_id)
+    }
+
+    pub fn development_mode(&self) -> bool {
+        self.mode == "development"
     }
 }
 
