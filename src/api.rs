@@ -69,14 +69,6 @@ pub async fn transactions(
                     ).await;
                 });
 
-
-            }
-            MembershipState::Leave => {
-                info!("Left room: {}", room_id);
-            }
-            MembershipState::Ban => {
-                info!("Banned from room: {}", room_id);
-                //state.appservice.leave_room(room_id).await;
             }
             _ => {}
         }
