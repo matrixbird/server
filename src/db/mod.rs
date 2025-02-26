@@ -184,4 +184,25 @@ impl Database {
         Ok(row.try_get("address").ok())
     }
 
+    pub async fn store_event(
+        &self, 
+        event_id: &str, 
+        room_id: &str, 
+        event_type: &str, 
+        sender: &str,
+        event_json: Value,
+    ) 
+    -> Result<(), sqlx::Error> {
+
+        sqlx::query("INSERT INTO events (event_id, room_id, type, sender, json) VALUES ($1, $2, $3, $4, $5)")
+            .bind(event_id)
+            .bind(room_id)
+            .bind(event_type)
+            .bind(sender)
+            .bind(event_json)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
 }

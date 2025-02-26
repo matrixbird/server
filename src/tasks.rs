@@ -23,7 +23,7 @@ pub async fn process_email(
     payload: &EmailRequest,
     user: &str,
 ) {
-    // Store email data first - independent operation
+    
     let store_result = match serde_json::to_value(payload) {
         Ok(email_json) => {
             state.db.store_email_data(

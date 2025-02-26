@@ -30,6 +30,31 @@ pub async fn transactions(
     };
 
     for event in events {
+        //println!("Event: {:#?}", event);
+
+        let event_id = event["event_id"].as_str();
+        let room_id = event["room_id"].as_str();
+        let sender = event["sender"].as_str();
+        let event_type = event["type"].as_str();
+
+
+        match (event_id, room_id, sender, event_type) {
+            (Some(event_id), Some(room_id), Some(sender), Some(event_type)) => {
+                if let Err(e) =  state.db.store_event(
+                    event_id,
+                    room_id,
+                    event_type,
+                    sender,
+                    event.clone(),
+                ).await{
+                    tracing::warn!("Failed to store event: {:#?}", e);
+                }
+
+            },
+            _ => {
+            }
+        }
+
 
         let member_event = if let Ok(event) = serde_json::from_value::<RoomMemberEvent>(event.clone()) {
             event
@@ -37,13 +62,12 @@ pub async fn transactions(
             continue;
         };
 
-        //print!("Member Event: {:#?}", member_event);
 
         let room_id = member_event.room_id().to_owned();
         let membership = member_event.membership().to_owned();
         let sender = member_event.sender().to_owned();
 
-        // Ignore membership events for other users
+
         let invited_user = member_event.state_key().to_owned();
         if invited_user != state.appservice.user_id() {
             info!("Ignoring event for user: {}", invited_user);
@@ -68,6 +92,7 @@ pub async fn transactions(
                         room_id,
                     ).await;
                 });
+
 
             }
             _ => {}
