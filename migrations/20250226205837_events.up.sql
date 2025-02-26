@@ -1,7 +1,7 @@
 CREATE TABLE events (
     id SERIAL PRIMARY KEY,
     event_id TEXT NOT NULL UNIQUE,
-    room_id TEXT NOT NULL UNIQUE,
+    room_id TEXT NOT NULL,
     type TEXT NOT NULL,
     sender TEXT NOT NULL,
     json JSONB NOT NULL,

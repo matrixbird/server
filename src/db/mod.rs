@@ -13,6 +13,14 @@ pub struct Database {
     pub pool: PgPool,
 }
 
+#[derive(Debug, Clone)]
+#[derive(sqlx::FromRow)]
+pub struct UnprocessedEmail { 
+    pub message_id: String, 
+    pub envelope_to: String,
+    pub email_json: Value
+}
+
 impl Database {
     pub async fn new(config: &Config) -> Self {
 
@@ -79,6 +87,15 @@ impl Database {
             .await?;
 
         Ok(())
+    }
+
+    pub async fn get_unprocessed_emails(&self) -> Result<Vec<UnprocessedEmail>, anyhow::Error> {
+
+        let emails = sqlx::query_as::<_, UnprocessedEmail>("SELECT message_id, envelope_to, email_json FROM emails WHERE processed = false ORDER BY created_at ASC;")
+            .fetch_all(&self.pool)
+            .await?;
+
+        Ok(emails)
     }
 
     pub async fn add_invite(&self, email: &str, code: &str) -> Result<(), anyhow::Error> {

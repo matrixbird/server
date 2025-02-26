@@ -69,7 +69,9 @@ pub async fn signup(
 
     let mut invite_email: Option<String> = None;
 
-    if state.config.features.require_invite_code {
+    if !state.development_mode() &&
+        state.config.features.require_invite_code {
+
         match payload.invite_code.clone() {
             Some(code) => {
 
@@ -89,7 +91,6 @@ pub async fn signup(
                         "error": "Invite code required"
                     })))
                 }
-
 
             },
             None => {

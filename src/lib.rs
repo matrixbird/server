@@ -14,6 +14,8 @@ pub mod session;
 pub mod error;
 pub mod utils;
 
+use tokio::time::{interval, Duration};
+
 use std::sync::Arc;
 use axum::body::Body;
 use hyper_util::{client::legacy::connect::HttpConnector, rt::TokioExecutor};
@@ -70,7 +72,7 @@ impl AppState {
 
         println!("Running in {} mode", mode);
 
-        Ok(Arc::new(Self {
+        let state = Arc::new(Self {
             mode,
             config,
             db,
@@ -81,7 +83,20 @@ impl AppState {
             mailer,
             email_providers: providers,
             templates,
-        }))
+        });
+
+        let cron_state = state.clone();
+
+        tokio::spawn(async move {
+            let mut interval = interval(Duration::from_secs(60)); 
+            
+            loop {
+                interval.tick().await;
+                tasks::process_failed_emails(cron_state.clone()).await;
+            }
+        });
+
+        Ok(state)
     }
 
     pub async fn mxid_from_localpart(&self, localpart: &str) -> Result<String, anyhow::Error> {
@@ -93,6 +108,7 @@ impl AppState {
         self.mode == "development"
     }
 }
+
 
 use clap::{Parser, Subcommand};
 

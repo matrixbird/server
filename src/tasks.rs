@@ -11,6 +11,8 @@ use ruma::{
     }
 };
 
+use crate::utils::get_localpart;
+
 use crate::AppState;
 use crate::hook::{
     EmailRequest,
@@ -112,6 +114,114 @@ pub async fn process_email(
 
     tracing::info!("Email processed and message sent successfully");
 }
+
+pub async fn process_failed_emails(state: Arc<AppState>) {
+
+    if let Ok(emails) = state.db.get_unprocessed_emails().await {
+        for email in emails {
+
+            let (user, _) = match get_localpart(email.envelope_to.clone()) {
+                Some(parts) => parts,
+                None => {
+                    tracing::error!("Failed to get localpart from email: {:?}", email);
+                    continue;
+                }
+            };
+
+            println!("Processing email for user: {}", user);
+
+            // deserialize the email json to EmailRequest 
+            let payload: EmailRequest = match serde_json::from_value(email.email_json.clone()) {
+                Ok(email) => email,
+                Err(e) => {
+                    tracing::error!("Failed to deserialize email: {}", e);
+                    continue;
+                }
+            };
+
+            let state_clone = state.clone();
+            tokio::spawn(async move {
+                process_failed_email(state_clone, &payload, &user).await;
+            });
+
+            sleep(Duration::from_secs(1)).await;
+
+        }
+    }
+
+}
+
+pub async fn process_failed_email(
+    state: Arc<AppState>,
+    payload: &EmailRequest,
+    user: &str,
+) {
+    
+    let server_name = state.config.matrix.server_name.clone();
+    let raw_alias = format!("#{}:{}", user, server_name);
+    
+    let alias = match RoomAliasId::parse(&raw_alias) {
+        Ok(alias) => alias,
+        Err(e) => {
+            tracing::error!("Failed to parse room alias: {}", e);
+            return;
+        }
+    };
+
+    let room_id = match state.appservice.room_id_from_alias(alias).await {
+        Some(id) => id,
+        None => {
+            tracing::error!("Failed to get room ID for alias");
+            return;
+        }
+    };
+
+    let ev_type = MessageLikeEventType::from("matrixbird.email.legacy");
+
+    /*
+    let safe_html = match payload.content.html.clone() {
+        Some(html) => clean(&html),
+        None => "".to_string(),
+    };
+    */
+
+    let email_body = EmailBody {
+        text: payload.content.text.clone(),
+        html: payload.content.html.clone(),
+        //html: Some(safe_html),
+    };
+    let email_content = EmailContent {
+        message_id: payload.message_id.clone(),
+        body: email_body,
+        from: payload.from.clone(),
+        subject: payload.subject.clone(),
+        date: payload.date.clone(),
+        attachments: payload.attachments.clone(),
+
+    };
+
+    // Create and send the message
+    let raw_event = match ruma::serde::Raw::new(&email_content) {
+        Ok(raw) => raw.cast::<AnyMessageLikeEventContent>(),
+        Err(e) => {
+            tracing::error!("Failed to create raw event: {}", e);
+            return;
+        }
+    };
+
+    if let Err(e) = state.appservice.send_message(ev_type, room_id, raw_event).await {
+        tracing::error!("Failed to send Matrix message: {}", e);
+        return;
+    }
+
+    if let Err(e) = state.db.set_email_processed(&payload.message_id).await {
+        tracing::error!("Failed to mark email as processed: {}", e);
+        return;
+    }
+
+    tracing::info!("Email processed and message sent successfully");
+}
+
 
 pub async fn send_welcome(
     state: Arc<AppState>,
