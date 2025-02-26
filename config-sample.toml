@@ -13,11 +13,6 @@ sender_localpart = "matrixbird"
 access_token = ""
 hs_access_token = ""
 
-[appservice.rules]
-auto_join = false
-invite_by_local_user = false
-federation_domain_whitelist = ["matrix.org", "localhost:8481"]
-
 [matrix]
 homeserver = "http://localhost:8080"
 server_name = "localhost:8480"

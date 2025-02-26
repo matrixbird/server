@@ -4,10 +4,9 @@ use axum::{
     Json,
 };
 
-use ruma::events::room::{
-    member::{RoomMemberEvent, MembershipState},
-    history_visibility::{RoomHistoryVisibilityEvent, HistoryVisibility},
-};
+use ruma::events::room::
+    member::{RoomMemberEvent, MembershipState};
+
 
 use serde_json::{Value, json};
 use std::sync::Arc;
@@ -31,29 +30,6 @@ pub async fn transactions(
     };
 
     for event in events {
-        println!("Event: {:#?}", event);
-
-        if let Ok(_serialized) = serde_json::to_string(event) {
-            //println!("Serialized: {:#?}", serialized);
-        }
-
-        // If auto-join is enabled, join rooms with world_readable history visibility
-        if state.config.appservice.rules.auto_join {
-            if let Ok(event) = serde_json::from_value::<RoomHistoryVisibilityEvent>(event.clone()) {
-                match event.history_visibility() {
-                    HistoryVisibility::WorldReadable => {
-                        println!("History Visibility: World Readable");
-
-                        let room_id = event.room_id().to_owned();
-                        info!("Joining room: {}", room_id);
-                        state.appservice.join_room(room_id).await;
-
-                        return Ok(Json(json!({})))
-                    }
-                    _ => {}
-                }
-            }
-        };
 
         let member_event = if let Ok(event) = serde_json::from_value::<RoomMemberEvent>(event.clone()) {
             event
@@ -65,31 +41,7 @@ pub async fn transactions(
 
         let room_id = member_event.room_id().to_owned();
         let membership = member_event.membership().to_owned();
-        let server_name = member_event.room_id().server_name();
         let sender = member_event.sender().to_owned();
-
-        match server_name {
-            Some(server_name) => {
-
-                let allowed = state.config.appservice.rules.federation_domain_whitelist.iter().any(|domain| {
-                    server_name.as_str().ends_with(domain)
-                });
-
-
-                if server_name.as_str() != state.config.matrix.server_name && allowed {
-                    // Ignore events for rooms on other servers, if configured to local homeserver
-                    // users
-                    if state.config.appservice.rules.invite_by_local_user {
-                        info!("Ignoring event for room on different server: {}", server_name);
-                        continue;
-                    }
-                }
-            }
-            None => {
-                info!("Ignoring event for room with no server name");
-                continue;
-            }
-        }
 
         // Ignore membership events for other users
         let invited_user = member_event.state_key().to_owned();

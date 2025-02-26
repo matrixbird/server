@@ -52,14 +52,6 @@ pub struct AppService {
     pub sender_localpart: String,
     pub access_token: String,
     pub hs_access_token: String,
-    pub rules: AppServiceRules,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AppServiceRules {
-    pub auto_join: bool,
-    pub invite_by_local_user: bool,
-    pub federation_domain_whitelist: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
