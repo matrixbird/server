@@ -68,7 +68,7 @@ impl AppService {
             .await;
 
         if let Err(_) = whoami {
-            eprintln!("Failed to authenticate with homeserver. Check your access token.");
+            tracing::error!("Failed to authenticate with homeserver");
             std::process::exit(1);
         }
 

@@ -2,7 +2,7 @@ use axum::{
     middleware::{self},
     routing::{get, put, post},
     http::HeaderValue,
-    extract::{Request, State},
+    extract::{Request, State, MatchedPath},
     response::{IntoResponse, Redirect},
     Json,
     Router,
@@ -11,7 +11,7 @@ use axum::{
 use serde_json::json;
 
 use std::sync::Arc;
-use tracing::info;
+use tracing::{info, info_span, Span};
 
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
@@ -104,7 +104,23 @@ impl Server {
             .route("/health", get(health))
             .route("/", get(index))
             .layer(self.setup_cors(&self.state.config))
-            .layer(TraceLayer::new_for_http())
+            .layer(TraceLayer::new_for_http()
+                .make_span_with(|request: &Request<_>| {
+                    let path = request.uri().path().to_owned();
+                    let method = request.method().clone();
+                    tracing::info_span!("http-request", %path, %method)
+                })
+                .on_request(|_request: &hyper::Request<_>, _span: &tracing::Span| {
+                    tracing::event!(tracing::Level::INFO, "request received");
+                })
+                .on_response(|response: &hyper::Response<_>, latency: std::time::Duration, _span: &tracing::Span| {
+                    let status = response.status().as_u16();
+                    tracing::event!(tracing::Level::INFO, status = status, latency = ?latency, "sent response");
+                })
+                .on_failure(|error, _latency, _span: &tracing::Span| {
+                    tracing::error!("request failed: {}", error);
+                })
+            )
             .with_state(self.state.clone());
 
         let app = NormalizePathLayer::trim_trailing_slash()
@@ -117,14 +133,14 @@ impl Server {
             let ping = ping_state.appservice.ping_homeserver(txn_id.clone()).await;
             match ping {
                 Ok(_) => info!("Homeserver pinged successfully."),
-                Err(e) => eprintln!("Failed to ping homeserver: {}", e),
+                Err(e) => tracing::error!("Failed to ping homeserver: {}", e),
             }
         });
 
         if let Ok(listener) = tokio::net::TcpListener::bind(addr.clone()).await {
             axum::serve(listener, ServiceExt::<Request>::into_make_service(app)).await?;
         } else {
-            eprintln!("Failed to bind to address: {}", addr);
+            tracing::error!("Failed to bind to address: {}", addr);
             std::process::exit(1);
         }
 

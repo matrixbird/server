@@ -26,7 +26,8 @@ impl Database {
 
         let pool: PgPool;
         let mut opts: PgConnectOptions = config.db.url.clone().parse().unwrap();
-        opts = opts.log_statements(log::LevelFilter::Debug);
+        opts = opts.log_statements(tracing::log::LevelFilter::Debug)
+               .log_slow_statements(tracing::log::LevelFilter::Warn, std::time::Duration::from_secs(1));
 
 
         let pg_pool = PgPoolOptions::new()
@@ -36,17 +37,22 @@ impl Database {
             .await;
 
         match pg_pool {
-            Ok(p) => pool = p,
+            Ok(p) => {
+                tracing::info!("Successfully connected to database");
+                pool = p
+            }
             Err(e) => {
-                eprintln!("Database Error:\n");
-                // Print the error with full context
+                tracing::error!("Database Error:");
+
                 let mut error: &dyn std::error::Error = &e;
-                eprintln!("Error: {}", error);
+                tracing::error!("Error: {}", error);
+
                 while let Some(source) = error.source() {
-                    eprintln!("Caused by: {}", source);
+                    tracing::error!("Caused by: {}", source);
                     error = source;
                 }
-                eprintln!("\nMatrixbird cannot start without a valid database connection.");
+                tracing::error!("Matrixbird cannot start without a valid database connection");
+
                 process::exit(1);
             }
         }

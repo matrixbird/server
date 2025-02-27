@@ -88,7 +88,7 @@ impl AppState {
         let cron_state = state.clone();
 
         tokio::spawn(async move {
-            let mut interval = interval(Duration::from_secs(60)); 
+            let mut interval = interval(Duration::from_secs(60 * 5)); 
             
             loop {
                 interval.tick().await;

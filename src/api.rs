@@ -31,6 +31,7 @@ pub async fn transactions(
 
     for event in events {
         //println!("Event: {:#?}", event);
+        tracing::info!("Event: {:#?}", event);
 
         let event_id = event["event_id"].as_str();
         let room_id = event["room_id"].as_str();

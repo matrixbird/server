@@ -97,7 +97,7 @@ impl Config {
         let config_content = match fs::read_to_string(path) {
             Ok(content) => content,
             Err(e) => {
-                eprintln!("Failed to read config.toml: {}", e);
+                tracing::error!("Failed to read config.toml: {}", e);
                 process::exit(1);
             }
         };
@@ -105,7 +105,7 @@ impl Config {
         match toml::from_str(&config_content) {
             Ok(config) => config,
             Err(e) => {
-                eprintln!("Failed to parse config.toml: {}", e);
+                tracing::error!("Failed to parse config.toml: {}", e);
                 process::exit(1);
             }
         }

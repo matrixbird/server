@@ -26,4 +26,6 @@ jobs:
        cd /home/${{ secrets.VPS_USER }}/server
        git pull
        cargo build --release
+       cd /home/${{ secrets.VPS_USER }}/matrixbird.net/server
+       git pull
        EOF
