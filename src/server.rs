@@ -40,6 +40,8 @@ use crate::auth::{
     validate_invite_code
 };
 
+use crate::domain::{validate_domain, homeserver};
+
 use crate::api::transactions;
 
 pub struct Server{
@@ -100,6 +102,8 @@ impl Server {
             .nest("/_matrix/app/v1", service_routes)
             .route("/hook/invite", post(invite_hook))
             .route("/hook", post(hook))
+            .route("/domain/:domain", get(validate_domain))
+            .route("/homeserver", get(homeserver))
             .nest("/auth", auth_routes)
             .route("/health", get(health))
             .route("/", get(index))

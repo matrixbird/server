@@ -11,6 +11,7 @@ pub mod middleware;
 pub mod templates;
 pub mod email;
 pub mod session;
+pub mod domain;
 pub mod error;
 pub mod utils;
 
