@@ -141,17 +141,20 @@ pub fn get_email_subdomain(email: &str) -> Result<&str, anyhow::Error> {
     }
 }
 
-pub fn localhost_domain(address: &str) -> String {
+pub fn localhost_domain(address: String) -> String {
     if let Some(separator_position) = address.rfind(':') {
-        let (host_part, port_part) = address.split_at(separator_position + 1);
+        let host_part = &address[..separator_position + 1];
+        let port_part = &address[separator_position + 1..];
+        
         let mut port_digits: Vec<char> = port_part.chars().collect();
         
         if port_digits.len() >= 2 {
             port_digits[1] = '0';
         }
+        
         format!("{}{}", host_part, port_digits.into_iter().collect::<String>())
     } else {
-        address.to_string()
+        address
     }
 }
 

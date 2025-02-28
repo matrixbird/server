@@ -40,7 +40,11 @@ use crate::auth::{
     validate_invite_code
 };
 
-use crate::domain::{validate_domain, homeserver};
+use crate::domain::{
+    is_matrix_email,
+    validate_domain, 
+    homeserver
+};
 
 use crate::api::transactions;
 
@@ -103,6 +107,7 @@ impl Server {
             .route("/hook/invite", post(invite_hook))
             .route("/hook", post(hook))
             .route("/domain/:domain", get(validate_domain))
+            .route("/email/:email", get(is_matrix_email))
             .route("/homeserver", get(homeserver))
             .nest("/auth", auth_routes)
             .route("/health", get(health))
