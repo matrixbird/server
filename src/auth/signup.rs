@@ -151,6 +151,15 @@ pub async fn signup(
     println!("register response: {:?}", resp);
 
 
+    // store user
+    if let Ok(()) = state.db.create_user(
+        resp.user_id.clone().as_str(),
+        payload.username.clone().as_str()
+    ).await{
+        println!("created user");
+    }
+
+
     if let Ok(Some(request)) = state.session.get_code_session(
         payload.session.clone(),
     ).await {
