@@ -12,6 +12,8 @@ use ruma::{
 
 use serde_json::{json, Value};
 
+use serde::{Serialize, Deserialize};
+
 use crate::utils::get_localpart;
 
 use crate::AppState;
@@ -19,6 +21,7 @@ use crate::hook::{
     EmailRequest,
     EmailBody,
     EmailContent,
+    RelatesTo
 };
 
 pub async fn process_email(
@@ -91,7 +94,7 @@ pub async fn process_email(
         subject: payload.subject.clone(),
         date: payload.date.clone(),
         attachments: payload.attachments.clone(),
-
+        m_relates_to: None,
     };
 
     // Create and send the message
@@ -191,6 +194,7 @@ pub async fn process_failed_email(
         html: payload.content.html.clone(),
         //html: Some(safe_html),
     };
+
     let email_content = EmailContent {
         message_id: payload.message_id.clone(),
         body: email_body,
@@ -198,7 +202,7 @@ pub async fn process_failed_email(
         subject: payload.subject.clone(),
         date: payload.date.clone(),
         attachments: payload.attachments.clone(),
-
+        m_relates_to: None,
     };
 
     // Create and send the message
@@ -238,10 +242,11 @@ pub async fn send_welcome(
         })
     ) {
         let subject = String::from("Welcome to Matrixbird");
-        if let Ok(res) = state.appservice.send_welcome_message(
+        if let Ok(res) = state.appservice.send_to_inbox(
             room_id.clone(),
             subject,
             body.clone().to_string(),
+            None
         ).await {
             tracing::info!("Welcome event sent - event ID: {:#?}", res);
         };
@@ -283,10 +288,11 @@ pub async fn send_welcome(
         json!({})
     ) {
         let subject = String::from("What is Matrixbird?");
-        if let Ok(res) = state.appservice.send_welcome_message(
+        if let Ok(res) = state.appservice.send_to_inbox(
             room_id,
             subject,
             body.clone().to_string(),
+            None
         ).await {
             tracing::info!("Welcome event sent - event ID: {:#?}", res);
         };
@@ -299,22 +305,10 @@ pub async fn process_reply(
     event: Value,
 ) {
 
-    let user_id = match event["content"]["to"].as_str() {
-        Some(content) => content,
-        None => return
-    };
-
-    if user_id != state.appservice.user_id() {
-        return
-    }
-
-
     let room_id = match event["room_id"].as_str() {
         Some(room_id) => room_id,
         None => return
     };
-
-
 
     let room_id = match OwnedRoomId::try_from(room_id) {
         Ok(room_id) => room_id,
@@ -324,22 +318,47 @@ pub async fn process_reply(
         }
     };
 
-    tracing::info!("Reply with bot: {} {}", user_id, room_id);
-
     let subject = match event["content"]["subject"].as_str() {
         Some(subject) => format!("Re: {}", subject),
         None => String::from("Re:"),
     };
+
+    let relation = match event.pointer("/content/m.relates_to") {
+        Some(relation) => relation,
+        None => {
+            tracing::error!("No relation found in event");
+            return;
+        }
+    };
+
+    let relation = match serde_json::from_value::<RelatesTo>(relation.clone()) {
+        Ok(relation) => relation,
+        Err(e) => {
+            tracing::error!("Failed to parse relation: {}", e);
+            return;
+        }
+    };
+
+
+    if relation.event_id.is_none() || 
+        relation.m_in_reply_to.is_none() ||
+        relation.rel_type.is_none() {
+
+        tracing::error!("No event ID found in relation");
+        return;
+
+    }
 
     if let Ok(body) = state.templates.render(
         "auto_reply.html",
         json!({})
     ) {
 
-        if let Ok(res) = state.appservice.send_welcome_message(
+        if let Ok(res) = state.appservice.send_to_inbox(
             room_id.clone(),
             subject,
             body.clone().to_string(),
+            Some(relation)
         ).await {
             tracing::info!("Auto reply sent - event ID: {:#?}", res);
         };

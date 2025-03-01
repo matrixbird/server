@@ -38,7 +38,7 @@ use uuid::Uuid;
 
 use anyhow;
 
-use crate::hook::{EmailBody, EmailContent, Address};
+use crate::hook::{EmailBody, EmailContent, Address, RelatesTo};
 
 pub type HttpClient = ruma::client::http_client::HyperNativeTls;
 
@@ -228,11 +228,12 @@ impl AppService {
         Ok(response.event_id)
     }
 
-    pub async fn send_welcome_message(
+    pub async fn send_to_inbox(
         &self, 
         room_id: OwnedRoomId, 
         subject: String,
         body: String,
+        relation: Option<RelatesTo>,
     ) 
     -> Result<OwnedEventId, anyhow::Error> {
 
@@ -254,14 +255,23 @@ impl AppService {
             html: Some(body),
         };
 
-        let em_cont = EmailContent{
+        let mut em_cont = EmailContent{
             message_id,
             body,
             from,
             subject: Some(subject),
             date,
             attachments: None,
+            m_relates_to: None,
         };
+
+        match relation {
+            Some(rel) => {
+                em_cont.m_relates_to = Some(rel);
+            },
+            None => (),
+        }
+
 
         let raw_event = ruma::serde::Raw::new(&em_cont)?;
 

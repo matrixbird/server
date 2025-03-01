@@ -37,12 +37,23 @@ pub struct EmailContent {
     pub date: DateTime<Utc>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub attachments: Option<Vec<Attachment>>,
+    #[serde(rename = "m.relates.to")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub m_relates_to: Option<RelatesTo>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct EmailBody {
     pub text: Option<String>,
     pub html: Option<String>,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct RelatesTo {
+    pub event_id: Option<String>,
+    #[serde(rename = "m.in_reply_to")]
+    pub m_in_reply_to: Option<String>,
+    pub rel_type: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

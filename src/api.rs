@@ -71,12 +71,22 @@ pub async fn transactions(
             if event_type == "matrixbird.email.native" {
                 tracing::info!("Outgoing native email: {}", event_type);
 
-                let state_copy = state.clone();
-                let event_copy = event.clone();
+                let user_id = match event["content"]["to"].as_str() {
+                    Some(to) => to,
+                    None => ""
+                };
 
-                tokio::spawn(async move {
-                    tasks::process_reply(state_copy, event_copy).await;
-                });
+                // Process auto-replies for @matrixbird user
+                if user_id == state.appservice.user_id() {
+
+                    let state_copy = state.clone();
+                    let event_copy = event.clone();
+
+                    tokio::spawn(async move {
+                        tasks::process_reply(state_copy, event_copy).await;
+                    });
+                }
+
 
             }
 
