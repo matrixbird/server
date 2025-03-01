@@ -4,6 +4,9 @@ version = "0.1.0"
 authors = ["ChurchOfTheSubgenius <mail@hummingbard.com>"]
 edition = "2024"
 
+[build]
+rustflags = ["ruma_unstable_exhaustive_types"]
+
 [dependencies]
 ammonia = "4.0.0"
 anyhow = "1.0.93"
@@ -26,7 +29,7 @@ rand = "0.9.0"
 redis = { version = "0.27.5", features = ["tokio-comp"] }
 regex = "1.11.1"
 reqwest = { version = "0.12.9", features = ["json"] }
-ruma = { version = "0.11.1", features = ["appservice-api-c", "client-hyper-native-tls", "client-api-c", "client-ext-client-api", "rand", "unstable-exhaustive-types"] }
+ruma = { version = "0.11.1", features = ["appservice-api-c", "client-hyper-native-tls", "client-api-c", "client-ext-client-api", "rand"] }
 serde = { version = "1.0.215", features = ["derive"] }
 serde_json = "1.0.133"
 sqlx = { version = "0.8.3", features = ["runtime-tokio", "postgres", "time", "chrono", "tls-native-tls"] }
