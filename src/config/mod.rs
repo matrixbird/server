@@ -13,7 +13,7 @@ pub struct Config {
     pub redis: Redis,
     pub features: Features,
     pub email: Email,
-    pub mailer: Mailer,
+    pub smtp: SMTP,
     pub authentication: Authentication,
 }
 
@@ -36,9 +36,12 @@ pub struct Email {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Mailer {
-    pub api_token: String,
+pub struct SMTP {
     pub account: String,
+    pub server: String,
+    pub port: u16,
+    pub username: String,
+    pub password: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

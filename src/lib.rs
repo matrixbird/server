@@ -32,7 +32,7 @@ pub struct AppState {
     pub appservice: appservice::AppService,
     pub transaction_store: ping::TransactionStore,
     pub session: session::SessionStore,
-    pub mailer: email::Mailer,
+    pub mail: email::MailService,
     pub email_providers: email::EmailProviders,
     pub templates: templates::EmailTemplates,
 }
@@ -51,12 +51,10 @@ impl AppState {
 
         let db = db::Database::new(&config).await;
 
-        let mailer = email::Mailer::new(
-            &config.mailer.api_token,
-            &config.mailer.account,
-        );
 
         let templates = templates::EmailTemplates::new()?;
+
+        let mail = email::MailService::new(&config, templates.clone());
 
         let providers = email::EmailProviders::new("data/providers.json")?;
 
@@ -81,7 +79,7 @@ impl AppState {
             appservice,
             transaction_store,
             session,
-            mailer,
+            mail,
             email_providers: providers,
             templates,
         });

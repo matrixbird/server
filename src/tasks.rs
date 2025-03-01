@@ -1,7 +1,6 @@
 use std::sync::Arc;
 use tokio::time::{sleep, Duration};
 
-
 use ruma::{
     RoomAliasId,
     OwnedRoomId,
@@ -10,6 +9,8 @@ use ruma::{
         MessageLikeEventType,
     }
 };
+
+use serde_json::json;
 
 use crate::utils::get_localpart;
 
@@ -229,7 +230,13 @@ pub async fn send_welcome(
     room_id: OwnedRoomId,
 ) {
 
-    if let Some(body) = state.templates.get("welcome_matrix.html") {
+    // send first matrix email
+    if let Ok(body) = state.templates.render(
+        "welcome_matrix.html",
+        json!({
+            "user": local_part,
+        })
+    ) {
         let subject = String::from("Welcome to Matrixbird");
         if let Ok(res) = state.appservice.send_welcome_message(
             room_id.clone(),
@@ -240,35 +247,41 @@ pub async fn send_welcome(
         };
     }
 
+    // send welcome email 
     if !state.development_mode() {
 
-        if let Some(body) = state.templates.get("welcome_email.html") {
+        let to = format!("{}@{}", local_part, state.config.email.domain);
 
-            let to = format!("{}@{}", local_part, state.config.email.domain);
-            let res = state.mailer.send_email(
-                &to,
-                Some("welcome@matrixbird.org"),
-                body,
-                "Welcome to Matrixbird",
-            ).await;
 
-            match res {
-                Ok(r) => {
-                    tracing::info!("Welcome email sent: {:#?}", r);
-                }
-                Err(e) => {
-                    tracing::warn!("Failed to send welcome email: {:#?}", e);
-                }
+        let sent = state.mail.send(
+            &to,
+            "Hello from Matrixbird",
+            "welcome_email.html",
+            json!({
+                "user": local_part,
+            }),
+        );
+
+        match sent.await {
+            Ok(response) => {
+                tracing::info!("Welcome email sent: {:#?}", response);
+            }
+            Err(e) => {
+                tracing::warn!("Failed to send welcome email: {:#?}", e);
             }
         }
+
     } else {
         tracing::info!("Development mode: Skipping welcome email");
     }
 
-
     sleep(Duration::from_secs(3)).await;
 
-    if let Some(body) = state.templates.get("what_is_matrixbird.html") {
+    // send second matrix email
+    if let Ok(body) = state.templates.render(
+        "what_is_matrixbird.html",
+        json!({})
+    ) {
         let subject = String::from("What is Matrixbird?");
         if let Ok(res) = state.appservice.send_welcome_message(
             room_id,

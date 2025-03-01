@@ -101,12 +101,23 @@ pub async fn verify_email(
         payload.client_secret.clone()
     ).await {
 
-        if let Ok(res) = state.mailer.send_email_template(
+
+        let sent = state.mail.send(
             &payload.email,
-            &code,
-            "verification-code"
-        ).await{
-            println!("Email sent : {:#?}", res);
+            "Verification Code",
+            "verification-code.html",
+            serde_json::json!({
+                "code": code,
+            }),
+        );
+
+        match sent.await {
+            Ok(response) => {
+                println!("Email sent: {:?}", response);
+            }
+            Err(e) => {
+                println!("Error sending email: {:?}", e);
+            }
         }
 
 

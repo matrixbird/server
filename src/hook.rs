@@ -1,12 +1,9 @@
 use axum::{
     extract::State,
-    response::IntoResponse,
     Json,
 };
 
 use std::sync::Arc;
-
-use serde_json::json;
 
 use chrono::{DateTime, Utc};
 
@@ -17,7 +14,6 @@ use serde::{Deserialize, Serialize};
 
 
 use crate::AppState;
-use crate::error::AppserviceError;
 
 use crate::utils::{get_localpart, get_email_subdomain};
 
@@ -123,41 +119,6 @@ pub struct InviteRequest {
     pub to: Vec<Address>,
     pub subject: Option<String>,
     pub return_path: Option<String>,
-}
-
-use crate::utils::generate_invite_code;
-
-
-pub async fn invite_hook(
-    State(state): State<Arc<AppState>>,
-    Json(payload): Json<InviteRequest>,
-) -> Result<impl IntoResponse, AppserviceError> {
-
-    println!("INVITE email");
-    println!("To: {:#?}", payload);
-
-    let code = generate_invite_code();
-
-    if let Ok(()) = state.db.add_invite(
-        payload.envelope_from.clone().as_str(),
-        code.clone().as_str()
-    ).await{
-        println!("Stored user invite");
-    }
-
-    if let Ok(res) = state.mailer.send_email_template(
-        &payload.envelope_from,
-        &code,
-        "invite"
-    ).await{
-        println!("Email sent : {:#?}", res);
-    }
-
-
-    Ok(Json(json!({
-        "action": "accept",
-        "err": "none",
-    })))
 }
 
 

@@ -1,0 +1,107 @@
+use crate::config::{Config, SMTP};
+
+use lettre::{
+    message::header::{Header, HeaderName, HeaderValue},
+    transport::smtp::authentication::{Credentials, Mechanism},
+    transport::smtp::client::Tls,
+    Message, SmtpTransport, Transport,
+};
+
+use lettre::message::{MultiPart, SinglePart};
+
+use lettre::message::header::ContentType;
+
+use std::time::Duration;
+use std::error::Error;
+
+use serde_json::Value;
+
+
+#[derive(Debug, Clone)]
+struct XPMMessageStream(String);
+
+impl Header for XPMMessageStream {
+    fn name() -> HeaderName {
+        HeaderName::new_from_ascii_str("X-PM-Message-Stream")
+    }
+
+    fn parse(s: &str) -> Result<Self, Box<dyn Error + Send + Sync>> {
+        Ok(XPMMessageStream(s.to_string()))
+    }
+
+    fn display(&self) -> HeaderValue {
+        let name = HeaderName::new_from_ascii_str("X-PM-Message-Stream");
+        HeaderValue::new(name, self.0.clone())
+    }
+}
+
+use crate::templates::EmailTemplates;
+
+#[derive(Debug, Clone)]
+pub struct MailService {
+    transport: SmtpTransport,
+    templates: EmailTemplates,
+    smtp: SMTP,
+}
+
+impl MailService {
+    pub fn new(config: &Config, templates: EmailTemplates) -> Self {
+
+        let smtp = config.smtp.clone();
+
+        let credentials = Credentials::new(config.smtp.username.to_string(), config.smtp.password.to_string());
+
+        let transport = SmtpTransport::relay(&config.smtp.server)
+            .unwrap()
+            .port(config.smtp.port) 
+            .authentication(vec![Mechanism::Plain]) 
+            .tls(Tls::None) 
+            .timeout(Some(Duration::from_secs(10))) 
+            .credentials(credentials)
+            .build();
+
+        Self {
+            transport,
+            templates,
+            smtp,
+        }
+    }
+
+    pub async fn send(&self, 
+        recipient: &str,
+        subject: &str,
+        template_name: &str,
+        template_data: Value,
+    ) -> Result<(), anyhow::Error> {
+
+
+        let html = self.templates.render(template_name, template_data)?;
+
+        let text = html2text::from_read(html.as_bytes(), 80)?;
+
+        let email = Message::builder()
+            .from(self.smtp.account.parse()?)
+            .to(recipient.parse()?)
+            .subject(subject)
+            .header(XPMMessageStream("outbound".to_string()))
+            .multipart(
+                MultiPart::alternative()
+                    .singlepart(
+                        SinglePart::builder()
+                            .header(ContentType::TEXT_PLAIN)
+                            .body(text),
+                    )
+                    .singlepart(
+                        SinglePart::builder()
+                            .header(ContentType::TEXT_HTML)
+                            .body(html),
+                    ),
+            )?;
+
+        self.transport.send(&email)?;
+
+        Ok(())
+    }
+}
+
+

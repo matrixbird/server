@@ -27,7 +27,7 @@ use crate::config::Config;
 use crate::middleware::authenticate_homeserver;
 
 use crate::ping::ping;
-use crate::hook::{invite_hook, hook};
+use crate::hook::hook;
 
 use crate::auth::{
     login, 
@@ -104,7 +104,6 @@ impl Server {
 
         let app = Router::new()
             .nest("/_matrix/app/v1", service_routes)
-            .route("/hook/invite", post(invite_hook))
             .route("/hook", post(hook))
             .route("/domain/:domain", get(validate_domain))
             .route("/email/:email", get(is_matrix_email))
