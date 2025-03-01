@@ -62,12 +62,24 @@ pub async fn transactions(
         });
 
         if let Some(event_type) = event["type"].as_str() {
+
             if event_type == "matrixbird.email.legacy" {
-                tracing::info!("Outgoing legacy email: {}", event_type);
+                //tracing::info!("Outgoing legacy email: {}", event_type);
             }
+
+
             if event_type == "matrixbird.email.native" {
-                tracing::info!("Outgoing legacy email: {}", event_type);
+                tracing::info!("Outgoing native email: {}", event_type);
+
+                let state_copy = state.clone();
+                let event_copy = event.clone();
+
+                tokio::spawn(async move {
+                    tasks::process_reply(state_copy, event_copy).await;
+                });
+
             }
+
         }
 
 

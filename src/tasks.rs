@@ -10,7 +10,7 @@ use ruma::{
     }
 };
 
-use serde_json::json;
+use serde_json::{json, Value};
 
 use crate::utils::get_localpart;
 
@@ -292,4 +292,56 @@ pub async fn send_welcome(
         };
     }
 
+}
+
+pub async fn process_reply(
+    state: Arc<AppState>,
+    event: Value,
+) {
+
+    let user_id = match event["content"]["to"].as_str() {
+        Some(content) => content,
+        None => return
+    };
+
+    if user_id != state.appservice.user_id() {
+        return
+    }
+
+
+    let room_id = match event["room_id"].as_str() {
+        Some(room_id) => room_id,
+        None => return
+    };
+
+
+
+    let room_id = match OwnedRoomId::try_from(room_id) {
+        Ok(room_id) => room_id,
+        Err(e) => {
+            tracing::error!("Failed to parse room ID: {}", e);
+            return;
+        }
+    };
+
+    tracing::info!("Reply with bot: {} {}", user_id, room_id);
+
+    let subject = match event["content"]["subject"].as_str() {
+        Some(subject) => format!("Re: {}", subject),
+        None => String::from("Re:"),
+    };
+
+    if let Ok(body) = state.templates.render(
+        "auto_reply.html",
+        json!({})
+    ) {
+
+        if let Ok(res) = state.appservice.send_welcome_message(
+            room_id.clone(),
+            subject,
+            body.clone().to_string(),
+        ).await {
+            tracing::info!("Auto reply sent - event ID: {:#?}", res);
+        };
+    }
 }
