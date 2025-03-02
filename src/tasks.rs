@@ -331,7 +331,7 @@ pub async fn process_reply(
         }
     };
 
-    let relation = match serde_json::from_value::<RelatesTo>(relation.clone()) {
+    let mut relation = match serde_json::from_value::<RelatesTo>(relation.clone()) {
         Ok(relation) => relation,
         Err(e) => {
             tracing::error!("Failed to parse relation: {}", e);
@@ -348,6 +348,13 @@ pub async fn process_reply(
         return;
 
     }
+
+    let event_id = match event["event_id"].as_str() {
+        Some(event_id) => event_id,
+        None => return
+    };
+
+    relation.m_in_reply_to = Some(event_id.to_string());
 
     if let Ok(body) = state.templates.render(
         "auto_reply.html",

@@ -37,7 +37,7 @@ pub struct EmailContent {
     pub date: DateTime<Utc>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub attachments: Option<Vec<Attachment>>,
-    #[serde(rename = "m.relates.to")]
+    #[serde(rename = "m.relates_to")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub m_relates_to: Option<RelatesTo>,
 }
