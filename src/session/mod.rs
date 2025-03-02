@@ -64,21 +64,11 @@ impl SessionStore {
     }
 
 
-    pub async fn validate_session(&self, session_id: &str, device_id: &str) -> Result<(bool, Option<Session>), anyhow::Error> {
+    pub async fn validate_session(&self, session_id: &str) -> Result<(bool, Option<Session>), anyhow::Error> {
         let mut conn = self.client.get_multiplexed_async_connection().await?;
         // Get session and update last_access
         if let Some(data) = conn.get::<_, Option<String>>(&session_id).await? {
             let mut session: Session = serde_json::from_str(&data)?;
-
-            if session.device_id.is_none() {
-                return Ok((false, None));
-            }
-
-            if let Some(ref id) = session.device_id {
-                if id.as_str() != device_id {
-                    return Ok((false, None));
-                }
-            }
 
 
             session.last_access = chrono::Utc::now().timestamp();

@@ -180,7 +180,7 @@ pub struct SessionValidationRequest {
 pub async fn validate_session(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
-    Path(device_id): Path<String>,
+    //Path(device_id): Path<String>,
 ) -> Result<impl IntoResponse, AppserviceError> {
 
     let auth_header = headers.get("Authorization")
@@ -227,7 +227,6 @@ pub async fn validate_session(
 
     if let Ok((valid, Some(session))) = state.session.validate_session(
         session_id,
-        &device_id,
     ).await{
 
 
@@ -235,6 +234,7 @@ pub async fn validate_session(
             return Ok(Json(json!({
                 "valid": true,
                 "access_token": session.access_token,
+                "device_id": session.device_id,
                 "user_id": session.user_id,
             })));
         }

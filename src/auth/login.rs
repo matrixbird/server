@@ -85,7 +85,6 @@ pub async fn login(
 
         return Ok(Json(json!({
             "session_id": session,
-            "device_id": resp.device_id,
         })));
         
     };

@@ -96,7 +96,8 @@ impl Server {
             .route("/signup", post(signup))
             .route("/code/validate/:code", get(validate_invite_code))
             .route("/request/invite/:email", get(request_invite))
-            .route("/session/validate/:device_id", get(validate_session))
+            //.route("/session/validate/:device_id", get(validate_session))
+            .route("/session/validate", get(validate_session))
             .route("/username/available/:username", get(username_available))
             .route("/email/verify", post(verify_email))
             .route("/code/verify", post(verify_code));
