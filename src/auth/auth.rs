@@ -247,6 +247,29 @@ pub async fn validate_session(
     })))
 }
 
+pub async fn revoke_session(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    //Path(device_id): Path<String>,
+) -> Result<impl IntoResponse, AppserviceError> {
+
+    let auth_header = headers.get("Authorization")
+        .and_then(|h| h.to_str().ok())
+        .and_then(|h| h.strip_prefix("Bearer "));
+        
+    let session_id = auth_header.unwrap_or("");
+
+    println!("Revoking session: {}", session_id);
+
+    let _ = state.session.revoke_session(
+        session_id,
+    ).await;
+
+
+    Ok(Json(json!({
+    })))
+}
+
 
 pub async fn request_invite(
     State(state): State<Arc<AppState>>,

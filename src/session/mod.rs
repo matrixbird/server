@@ -99,6 +99,7 @@ impl SessionStore {
     }
 
     pub async fn revoke_session(&self, session_id: &str) -> Result<(), anyhow::Error> {
+        tracing::info!("Revoking session: {}", session_id);
         let mut conn = self.client.get_multiplexed_async_connection().await?;
         let () = conn.del(session_id).await?;
 
