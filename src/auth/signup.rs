@@ -4,9 +4,6 @@ use axum::{
     Json,
 };
 
-
-//use tracing::{info, warn};
-
 use std::sync::Arc;
 
 use serde_json::json;
@@ -16,25 +13,13 @@ use serde::{Serialize, Deserialize};
 use crate::AppState;
 use crate::error::AppserviceError;
 
+use crate::tasks;
+
 use ruma::{
-    //OwnedRoomId,
-    events::{
-        //EmptyStateKey,
-        InitialStateEvent,
-        //AnyInitialStateEvent,
-        //room::encryption::RoomEncryptionEventContent,
-        //room::encryption::InitialRoomEncryptionEvent,
-        macros::EventContent,
-    },
-    //room::RoomType as DefaultRoomType, 
+    events::macros::EventContent,
     api::client::{
         account::register,
-        //account::whoami,
         account::get_username_availability,
-        room::create_room,
-        //room::create_room::v3::CreationContent,
-        //session::login,
-        //uiaa::UserIdentifier,
         uiaa::AuthData,
         uiaa::Dummy,
     },
@@ -199,64 +184,35 @@ pub async fn signup(
 
     let temp_state = state.clone();
 
+    //tokio::spawn(async move {
+    //});
+
+
+    if let Ok(inbox) = tasks::build_user_inbox(
+        temp_state,
+        resp.user_id.clone(),
+        username,
+        access_token
+    ).await {
+        println!("Built user inbox: {:?}", inbox);
+    }
+
+    let user_id = resp.user_id.clone();
+    let access_token = resp.access_token.clone();
+
+    let temp_state = state.clone();
+
     tokio::spawn(async move {
-        let client = ruma::Client::builder()
-            .homeserver_url(temp_state.config.matrix.homeserver.clone())
-            .access_token(access_token)
-            .build::<HttpClient>()
-            .await.unwrap();
-
-
-        let mut req = create_room::v3::Request::new();
-
-
-        /*
-        let reec = RoomEncryptionEventContent::new(ruma::EventEncryptionAlgorithm::MegolmV1AesSha2);
-
-        let iree = InitialRoomEncryptionEvent::new(reec);
-
-
-        let aise = iree.to_raw_any();
-
-        req.initial_state = vec![aise];
-*/
-
-        let rtc = RoomTypeContent {
-            room_type: "INBOX".to_string()
-        };
-
-        let custom_state_event = InitialStateEvent {
-            content: rtc,
-            state_key: "inbox".to_string(), 
-        };
-
-        let raw_event = custom_state_event.to_raw_any();
-
-        req.initial_state = vec![raw_event];
-
-        /* DISABLE space
-        let mut cc = CreationContent::new();
-        cc.room_type = Some(DefaultRoomType::Space);
-        let raw_cc = ruma::serde::Raw::new(&cc).unwrap();
-        req.creation_content = Some(raw_cc);
-        */
-
-        req.name = Some("INBOX".to_string());
-
-        req.room_alias_name = Some(username);
-
-        req.preset = Some(create_room::v3::RoomPreset::TrustedPrivateChat);
-        req.topic = Some("INBOX".to_string());
-
-        let appservice_id = *temp_state.appservice.user_id.clone();
-
-        req.invite = vec![appservice_id];
-
-        if let Ok(res) = client.send_request(req).await {
-            println!("room creation response: {:?}", res);
+        if let Ok(inbox) = tasks::build_user_drafts_room(
+            temp_state,
+            user_id,
+            access_token
+        ).await {
+            println!("Built user drafts room: {:?}", inbox);
         }
-
     });
+
+
 
     if let Some(access_token) = resp.access_token.clone() {
         if let Ok(session) = state.session.create_session(

@@ -2,7 +2,7 @@ use axum::{
     middleware::{self},
     routing::{get, put, post},
     http::HeaderValue,
-    extract::{Request, State, MatchedPath},
+    extract::{Request, State},
     response::{IntoResponse, Redirect},
     Json,
     Router,
@@ -11,7 +11,7 @@ use axum::{
 use serde_json::json;
 
 use std::sync::Arc;
-use tracing::{info, info_span, Span};
+use tracing::info;
 
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;

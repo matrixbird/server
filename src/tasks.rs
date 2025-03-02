@@ -4,10 +4,17 @@ use tokio::time::{sleep, Duration};
 use ruma::{
     RoomAliasId,
     OwnedRoomId,
+    OwnedUserId,
     events::{
         AnyMessageLikeEventContent, 
         MessageLikeEventType,
-    }
+        InitialStateEvent,
+        GlobalAccountDataEventType,
+        AnyGlobalAccountDataEventContent,
+        macros::EventContent,
+    },
+    api::client::room::create_room,
+    api::client::config::set_global_account_data,
 };
 
 use serde_json::{json, Value};
@@ -24,12 +31,141 @@ use crate::hook::{
     RelatesTo
 };
 
+use crate::appservice::HttpClient;
+
+#[derive(Clone, Debug, Deserialize, Serialize, EventContent)]
+#[ruma_event(type = "matrixbird.room.type", kind = State, state_key_type = String)]
+pub struct RoomTypeContent {
+    #[serde(rename = "type")]
+    room_type: String,
+}
+
+#[derive(Serialize)]
+struct MatrixbirdRoomType {
+    room_id: String,
+}
+
+pub async fn build_user_inbox(
+    state: Arc<AppState>,
+    user_id: OwnedUserId,
+    username: String,
+    access_token: Option<String>,
+) -> Result<(), anyhow::Error> {
+
+    let client = ruma::Client::builder()
+        .homeserver_url(state.config.matrix.homeserver.clone())
+        .access_token(access_token)
+        .build::<HttpClient>()
+        .await?;
+
+    let mut req = create_room::v3::Request::new();
+
+    let rtc = RoomTypeContent {
+        room_type: "INBOX".to_string()
+    };
+
+    let custom_state_event = InitialStateEvent {
+        content: rtc,
+        state_key: "inbox".to_string(), 
+    };
+
+    let raw_event = custom_state_event.to_raw_any();
+
+    req.initial_state = vec![raw_event];
+    req.name = Some("INBOX".to_string());
+    req.room_alias_name = Some(username);
+    req.preset = Some(create_room::v3::RoomPreset::TrustedPrivateChat);
+    req.topic = Some("INBOX".to_string());
+
+    let appservice_id = *state.appservice.user_id.clone();
+    req.invite = vec![appservice_id];
+
+    let resp = client.send_request(req).await?;
+
+    tracing::info!("INBOX room creation response: {:?}", resp);
+
+    let value = MatrixbirdRoomType {
+        room_id: resp.room_id.to_string(),
+    };
+
+    let raw_event = ruma::serde::Raw::new(&value)?;
+
+    let raw = raw_event.cast::<AnyGlobalAccountDataEventContent>();
+
+    let req = set_global_account_data::v3::Request::new_raw(
+        user_id,
+        GlobalAccountDataEventType::from("matrixbird.room.inbox"),
+        raw
+    );
+
+    let resp = client.send_request(req).await?;
+
+    tracing::info!("INBOX global account data response: {:?}", resp);
+    Ok(())
+}
+
+pub async fn build_user_drafts_room(
+    state: Arc<AppState>,
+    user_id: OwnedUserId,
+    access_token: Option<String>,
+) -> Result<(), anyhow::Error> {
+
+    let client = ruma::Client::builder()
+        .homeserver_url(state.config.matrix.homeserver.clone())
+        .access_token(access_token)
+        .build::<HttpClient>()
+        .await?;
+
+    let mut req = create_room::v3::Request::new();
+
+    let rtc = RoomTypeContent {
+        room_type: "DRAFTS".to_string()
+    };
+
+    let custom_state_event = InitialStateEvent {
+        content: rtc,
+        state_key: "drafts".to_string(), 
+    };
+
+    let raw_event = custom_state_event.to_raw_any();
+
+    req.initial_state = vec![raw_event];
+    req.name = Some("DRAFTS".to_string());
+    req.preset = Some(create_room::v3::RoomPreset::TrustedPrivateChat);
+    req.topic = Some("DRAFTS".to_string());
+
+    let resp = client.send_request(req).await?;
+
+    tracing::info!("DRAFTS room creation response: {:?}", resp);
+
+    let value = MatrixbirdRoomType {
+        room_id: resp.room_id.to_string(),
+    };
+
+    let raw_event = ruma::serde::Raw::new(&value)?;
+
+    let raw = raw_event.cast::<AnyGlobalAccountDataEventContent>();
+
+    let req = set_global_account_data::v3::Request::new_raw(
+        user_id,
+        GlobalAccountDataEventType::from("matrixbird.room.drafts"),
+        raw
+    );
+
+    let resp = client.send_request(req).await?;
+
+    tracing::info!("DRAFTS global account data response: {:?}", resp);
+
+    Ok(())
+}
+
+
 pub async fn process_email(
     state: Arc<AppState>,
     payload: &EmailRequest,
     user: &str,
 ) {
-    
+
     let store_result = match serde_json::to_value(payload) {
         Ok(email_json) => {
             state.db.store_email_data(
@@ -54,7 +190,7 @@ pub async fn process_email(
     // Try to send Matrix message
     let server_name = state.config.matrix.server_name.clone();
     let raw_alias = format!("#{}:{}", user, server_name);
-    
+
     // Early return if we can't parse the alias
     let alias = match RoomAliasId::parse(&raw_alias) {
         Ok(alias) => alias,
@@ -77,8 +213,8 @@ pub async fn process_email(
 
     /*
     let safe_html = match payload.content.html.clone() {
-        Some(html) => clean(&html),
-        None => "".to_string(),
+    Some(html) => clean(&html),
+    None => "".to_string(),
     };
     */
 
@@ -160,10 +296,10 @@ pub async fn process_failed_email(
     payload: &EmailRequest,
     user: &str,
 ) {
-    
+
     let server_name = state.config.matrix.server_name.clone();
     let raw_alias = format!("#{}:{}", user, server_name);
-    
+
     let alias = match RoomAliasId::parse(&raw_alias) {
         Ok(alias) => alias,
         Err(e) => {
@@ -184,8 +320,8 @@ pub async fn process_failed_email(
 
     /*
     let safe_html = match payload.content.html.clone() {
-        Some(html) => clean(&html),
-        None => "".to_string(),
+    Some(html) => clean(&html),
+    None => "".to_string(),
     };
     */
 
@@ -319,7 +455,8 @@ pub async fn process_reply(
     };
 
     let subject = match event["content"]["subject"].as_str() {
-        Some(subject) => format!("Re: {}", subject),
+        Some(subject) => subject.to_string(),
+        //Some(subject) => format!("Re: {}", subject),
         None => String::from("Re:"),
     };
 
@@ -341,8 +478,8 @@ pub async fn process_reply(
 
 
     if relation.event_id.is_none() || 
-        relation.m_in_reply_to.is_none() ||
-        relation.rel_type.is_none() {
+    relation.m_in_reply_to.is_none() ||
+    relation.rel_type.is_none() {
 
         tracing::error!("No event ID found in relation");
         return;
