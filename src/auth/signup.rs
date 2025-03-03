@@ -199,14 +199,29 @@ pub async fn signup(
 
     let user_id = resp.user_id.clone();
     let access_token = resp.access_token.clone();
-
     let temp_state = state.clone();
 
     tokio::spawn(async move {
-        if let Ok(inbox) = tasks::build_user_drafts_room(
+        if let Ok(inbox) = tasks::build_user_room(
             temp_state,
             user_id,
-            access_token
+            access_token,
+            String::from("DRAFTS")
+        ).await {
+            println!("Built user drafts room: {:?}", inbox);
+        }
+    });
+
+    let user_id = resp.user_id.clone();
+    let access_token = resp.access_token.clone();
+    let temp_state = state.clone();
+
+    tokio::spawn(async move {
+        if let Ok(inbox) = tasks::build_user_room(
+            temp_state,
+            user_id,
+            access_token,
+            String::from("SELF")
         ).await {
             println!("Built user drafts room: {:?}", inbox);
         }

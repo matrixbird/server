@@ -104,10 +104,11 @@ pub async fn build_user_inbox(
     Ok(())
 }
 
-pub async fn build_user_drafts_room(
+pub async fn build_user_room(
     state: Arc<AppState>,
     user_id: OwnedUserId,
     access_token: Option<String>,
+    room_type: String,
 ) -> Result<(), anyhow::Error> {
 
     let client = ruma::Client::builder()
@@ -119,24 +120,24 @@ pub async fn build_user_drafts_room(
     let mut req = create_room::v3::Request::new();
 
     let rtc = RoomTypeContent {
-        room_type: "DRAFTS".to_string()
+        room_type: room_type.clone(),
     };
 
     let custom_state_event = InitialStateEvent {
         content: rtc,
-        state_key: "drafts".to_string(), 
+        state_key: room_type.clone(),
     };
 
     let raw_event = custom_state_event.to_raw_any();
 
     req.initial_state = vec![raw_event];
-    req.name = Some("DRAFTS".to_string());
+    req.name = Some(room_type.clone());
     req.preset = Some(create_room::v3::RoomPreset::TrustedPrivateChat);
-    req.topic = Some("DRAFTS".to_string());
+    req.topic = Some(room_type.clone());
 
     let resp = client.send_request(req).await?;
 
-    tracing::info!("DRAFTS room creation response: {:?}", resp);
+    tracing::info!("{} room creation response: {:?}", room_type, resp);
 
     let value = MatrixbirdRoomType {
         room_id: resp.room_id.to_string(),
@@ -146,15 +147,17 @@ pub async fn build_user_drafts_room(
 
     let raw = raw_event.cast::<AnyGlobalAccountDataEventContent>();
 
+    let key = format!("matrixbird.room.{}", room_type.to_lowercase());
+
     let req = set_global_account_data::v3::Request::new_raw(
         user_id,
-        GlobalAccountDataEventType::from("matrixbird.room.drafts"),
+        GlobalAccountDataEventType::from(key),
         raw
     );
 
     let resp = client.send_request(req).await?;
 
-    tracing::info!("DRAFTS global account data response: {:?}", resp);
+    tracing::info!("{} global account data response: {:?}", room_type, resp);
 
     Ok(())
 }
