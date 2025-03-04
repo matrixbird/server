@@ -77,14 +77,17 @@ pub async fn login(
 
     println!("Login response: {:?}", resp);
 
-    if let Ok(session) = state.session.create_session(
+    if let Ok((id, session)) = state.session.create_session(
         resp.user_id.to_string(),
         resp.access_token,
         Some(resp.device_id.clone())
     ).await{
 
         return Ok(Json(json!({
-            "session_id": session,
+            "session_id": id,
+            "access_token": session.access_token,
+            "device_id": session.device_id,
+            "user_id": session.user_id,
         })));
         
     };

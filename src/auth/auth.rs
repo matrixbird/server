@@ -229,7 +229,6 @@ pub async fn validate_session(
         session_id,
     ).await{
 
-
         if valid {
             return Ok(Json(json!({
                 "valid": true,

@@ -25,7 +25,7 @@ impl SessionStore {
         Ok(Self { client, ttl })
     }
 
-    pub async fn create_session(&self, user_id: String, access_token: String, device_id: Option<OwnedDeviceId>) -> Result<String, anyhow::Error> {
+    pub async fn create_session(&self, user_id: String, access_token: String, device_id: Option<OwnedDeviceId>) -> Result<(String, Session), anyhow::Error> {
 
         let mut conn = self.client.get_multiplexed_async_connection().await?;
         let session_id = Uuid::new_v4().to_string();
@@ -49,7 +49,7 @@ impl SessionStore {
             }
         }
         
-        Ok(session_id)
+        Ok((session_id, session))
     }
 
     pub async fn get_session(&self, session_id: &str) -> Result<Option<Session>, anyhow::Error> {

@@ -230,16 +230,16 @@ pub async fn signup(
 
 
     if let Some(access_token) = resp.access_token.clone() {
-        if let Ok(session) = state.session.create_session(
+        if let Ok((id, _)) = state.session.create_session(
             resp.user_id.to_string(),
             access_token,
             resp.device_id.clone()
         ).await{
 
             return Ok(Json(json!({
-                "session_id": session,
-                //"user_id": resp.user_id,
-                //"access_token": resp.access_token,
+                "session_id": id,
+                "user_id": resp.user_id,
+                "access_token": resp.access_token,
                 "device_id": resp.device_id,
             })));
             
