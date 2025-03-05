@@ -158,6 +158,16 @@ pub fn localhost_domain(address: String) -> String {
     }
 }
 
+pub fn replace_email_domain(email: &str, new_domain: &str) -> String {
+    let parts: Vec<&str> = email.split('@').collect();
+    
+    if parts.len() == 2 {
+        format!("{}@{}", parts[0], new_domain)
+    } else {
+        email.to_string()  
+    }
+}
+
 
 #[cfg(test)]
 mod tests {

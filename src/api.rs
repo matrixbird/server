@@ -16,6 +16,8 @@ use crate::AppState;
 
 use crate::tasks;
 
+use crate::utils::replace_email_domain;
+
 pub async fn transactions(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<Value>,
@@ -64,7 +66,81 @@ pub async fn transactions(
         if let Some(event_type) = event["type"].as_str() {
 
             if event_type == "matrixbird.email.legacy" {
-                //tracing::info!("Outgoing legacy email: {}", event_type);
+                tracing::info!("Outgoing legacy email: {}", event_type);
+
+                let reply_to = match event["content"]["to"].as_str() {
+                    Some(to) => to,
+                    None => ""
+                };
+
+                if reply_to == "" {
+                    tracing::warn!("Missing reply_to");
+                    continue;
+                }
+
+                let from = match event["content"]["from"]["address"].as_str() {
+                    Some(from) => from,
+                    None => ""
+                };
+
+                if from == "" {
+                    tracing::warn!("Missing from");
+                    continue;
+                }
+
+                let mut from = from.to_string();
+
+                if state.development_mode() {
+                    //replace domain part
+                    let replaced = replace_email_domain(&from, state.config.email.domain.as_str());
+
+                    from = replaced;
+                }
+
+
+                let message_id = match event["content"]["m.relates_to"]["matrixbird.in_reply_to"].as_str() {
+                    Some(subject) => subject,
+                    None => ""
+                };
+
+                if message_id == "" {
+                    tracing::warn!("Missing message_id");
+                    continue;
+                }
+
+                let subject = match event["content"]["subject"].as_str() {
+                    Some(subject) => subject,
+                    None => ""
+                };
+
+                let html = match event["content"]["body"]["html"].as_str() {
+                    Some(html) => html,
+                    None => ""
+                };
+
+                let text = match event["content"]["body"]["text"].as_str() {
+                    Some(text) => text,
+                    None => ""
+                };
+
+
+                let sent = state.mail.send_reply(
+                    message_id,
+                    reply_to,
+                    from.to_string(),
+                    subject,
+                    text.to_string(),
+                    html.to_string(),
+                );
+
+                match sent.await {
+                    Ok(response) => {
+                        tracing::info!("Native email reply sent: {:#?}", response);
+                    }
+                    Err(e) => {
+                        tracing::warn!("Failed to send email reply: {:#?}", e);
+                    }
+                }
             }
 
 

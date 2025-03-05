@@ -35,6 +35,25 @@ impl Header for XPMMessageStream {
     }
 }
 
+#[derive(Debug, Clone)]
+struct InReplyTo(String);
+
+impl Header for InReplyTo {
+    fn name() -> HeaderName {
+        HeaderName::new_from_ascii_str("In-Reply-To")
+    }
+
+    fn parse(s: &str) -> Result<Self, Box<dyn Error + Send + Sync>> {
+        Ok(InReplyTo(s.to_string()))
+    }
+
+    fn display(&self) -> HeaderValue {
+        let name = HeaderName::new_from_ascii_str("In-Reply-To");
+        HeaderValue::new(name, self.0.clone())
+    }
+}
+
+
 use crate::templates::EmailTemplates;
 
 #[derive(Debug, Clone)]
@@ -84,6 +103,41 @@ impl MailService {
             .to(recipient.parse()?)
             .subject(subject)
             .header(XPMMessageStream("outbound".to_string()))
+            .multipart(
+                MultiPart::alternative()
+                    .singlepart(
+                        SinglePart::builder()
+                            .header(ContentType::TEXT_PLAIN)
+                            .body(text),
+                    )
+                    .singlepart(
+                        SinglePart::builder()
+                            .header(ContentType::TEXT_HTML)
+                            .body(html),
+                    ),
+            )?;
+
+        self.transport.send(&email)?;
+
+        Ok(())
+    }
+
+    pub async fn send_reply(&self, 
+        message_id: &str,
+        recipient: &str,
+        from: String,
+        subject: &str,
+        text: String,
+        html: String,
+    ) -> Result<(), anyhow::Error> {
+
+
+        let email = Message::builder()
+            .from(from.parse()?)
+            .to(recipient.parse()?)
+            .subject(subject)
+            .header(XPMMessageStream("outbound".to_string()))
+            .header(InReplyTo(message_id.to_string()))
             .multipart(
                 MultiPart::alternative()
                     .singlepart(
