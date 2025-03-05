@@ -8,6 +8,8 @@ use crate::utils::localhost_domain;
 
 use std::sync::Arc;
 
+use std::time::Duration;
+
 use serde_json::{Value, json};
 
 use crate::AppState;
@@ -129,7 +131,14 @@ async fn query_server(
 
     let url = format!("{}://{}/.well-known/matrix/client", protocol, domain);
 
-    let response = reqwest::get(url).await
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(5))
+        .connect_timeout(Duration::from_secs(3)) 
+        .build()?;
+
+    let response = client.get(url)
+        .send()
+        .await
         .map_err(|_| anyhow::anyhow!("Failed to query homeserver .well-known endpoint."))?;
 
     let json_data = response.json::<Value>().await
@@ -143,7 +152,10 @@ async fn query_server(
 
     let url = format!("{}/homeserver", mbs);
 
-    let response = reqwest::get(url).await
+    let response = client
+        .get(url)
+        .send()
+        .await
         .map_err(|_| anyhow::anyhow!("Failed to query matrixbird appservice."))?;
 
     let json_data = response.json::<Value>().await
