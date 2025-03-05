@@ -54,17 +54,17 @@ pub async fn is_matrix_email(
 
     // gnarly, fix later
     if valid {
-        if let Some(email) = email_to_matrix_id(&email) {
-            println!("Domain is valid for email: {:#?}", email);
+        if let Some(mxid) = email_to_matrix_id(&email) {
+            println!("Domain is valid for email: {:#?}", mxid);
 
-            let profile = state.appservice.get_profile(email).await;
+            let profile = state.appservice.get_profile(mxid.clone()).await;
 
             if let Some(profile) = profile {
                 println!("Profile: {:#?}", profile);
 
-
                 let mut res = json!({
                     "valid": true,
+                    "mxid": mxid
                 });
 
                 match profile.displayname {
