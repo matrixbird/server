@@ -66,7 +66,7 @@ pub async fn build_user_inbox(
 
     let custom_state_event = InitialStateEvent {
         content: rtc,
-        state_key: "inbox".to_string(), 
+        state_key: "INBOX".to_string(), 
     };
 
     let raw_event = custom_state_event.to_raw_any();
@@ -212,7 +212,7 @@ pub async fn process_email(
         }
     };
 
-    let ev_type = MessageLikeEventType::from("matrixbird.email.legacy");
+    let ev_type = MessageLikeEventType::from("matrixbird.email.standard");
 
     /*
     let safe_html = match payload.content.html.clone() {
@@ -319,7 +319,7 @@ pub async fn process_failed_email(
         }
     };
 
-    let ev_type = MessageLikeEventType::from("matrixbird.email.legacy");
+    let ev_type = MessageLikeEventType::from("matrixbird.email.standard");
 
     /*
     let safe_html = match payload.content.html.clone() {

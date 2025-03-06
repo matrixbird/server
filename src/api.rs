@@ -65,8 +65,8 @@ pub async fn transactions(
 
         if let Some(event_type) = event["type"].as_str() {
 
-            if event_type == "matrixbird.email.legacy" {
-                tracing::info!("Outgoing legacy email: {}", event_type);
+            if event_type == "matrixbird.email.standard" {
+                tracing::info!("Outgoing standard email: {}", event_type);
 
                 let reply_to = match event["content"]["to"].as_str() {
                     Some(to) => to,
@@ -135,7 +135,7 @@ pub async fn transactions(
 
                 match sent.await {
                     Ok(response) => {
-                        tracing::info!("Native email reply sent: {:#?}", response);
+                        tracing::info!("Matrix email reply sent: {:#?}", response);
                     }
                     Err(e) => {
                         tracing::warn!("Failed to send email reply: {:#?}", e);
@@ -144,8 +144,8 @@ pub async fn transactions(
             }
 
 
-            if event_type == "matrixbird.email.native" {
-                tracing::info!("Outgoing native email: {}", event_type);
+            if event_type == "matrixbird.email.matrix" {
+                tracing::info!("Outgoing matrix email: {}", event_type);
 
                 let user_id = match event["content"]["to"].as_str() {
                     Some(to) => to,

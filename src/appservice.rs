@@ -237,7 +237,7 @@ impl AppService {
     ) 
     -> Result<OwnedEventId, anyhow::Error> {
 
-        let ev_type = MessageLikeEventType::from("matrixbird.email.native");
+        let ev_type = MessageLikeEventType::from("matrixbird.email.matrix");
 
         let mid_localpart = Uuid::new_v4().to_string();
         let message_id = format!("{}@{}", mid_localpart, "matrixbird.com");

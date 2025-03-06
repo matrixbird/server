@@ -28,7 +28,7 @@ pub type HttpClient = ruma::client::http_client::HyperNativeTls;
 
 
 #[derive(Clone, Debug, Deserialize, Serialize, EventContent)]
-#[ruma_event(type = "matrixbird.email", kind = MessageLike)]
+#[ruma_event(type = "matrixbird.email.matrix", kind = MessageLike)]
 pub struct EmailContent {
     pub message_id: String,
     pub body: EmailBody,

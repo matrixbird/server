@@ -33,7 +33,8 @@ pub async fn is_matrix_email(
                 domain.to_string()
             }
         },
-        Err(_) => {
+        Err(err) => {
+            tracing::error!("Error: {}", err);
             return Json(json!({
                 "valid": false,
                 "error": "Invalid email address."
@@ -44,10 +45,10 @@ pub async fn is_matrix_email(
     let valid = match query_server(state.clone(), &domain).await {
         Ok(valid) => valid,
         Err(err) => {
-            println!("Error: {}", err);
+            tracing::error!("Error: {}", err);
             return Json(json!({
                 "valid": false,
-                "error": format!("{}", err)
+                "error": "Not a valid Matrix email address."
             }))
         }
     };
@@ -136,10 +137,10 @@ async fn query_server(
         .connect_timeout(Duration::from_secs(3)) 
         .build()?;
 
-    let response = client.get(url)
+    let response = client.get(&url)
         .send()
         .await
-        .map_err(|_| anyhow::anyhow!("Failed to query homeserver .well-known endpoint."))?;
+        .map_err(|_| anyhow::anyhow!("Failed to query homeserver .well-known endpoint: {}", url))?;
 
     let json_data = response.json::<Value>().await
         .map_err(|_| anyhow::anyhow!("Failed to parse homeserver .well-known response."))?;
@@ -148,15 +149,15 @@ async fn query_server(
         .get("matrixbird.server")
         .and_then(|server| server.get("url"))
         .and_then(|url| url.as_str())
-        .ok_or(anyhow::anyhow!("Missing or invalid matrixbird server configuration"))?;
+        .ok_or(anyhow::anyhow!("Homeserver does not support Matrixbird."))?;
 
     let url = format!("{}/homeserver", mbs);
 
     let response = client
-        .get(url)
+        .get(&url)
         .send()
         .await
-        .map_err(|_| anyhow::anyhow!("Failed to query matrixbird appservice."))?;
+        .map_err(|_| anyhow::anyhow!("Failed to query matrixbird appservice: {}", url))?;
 
     let json_data = response.json::<Value>().await
         .map_err(|_| anyhow::anyhow!("Failed to parse matrixbird appservice response."))?;
@@ -164,7 +165,7 @@ async fn query_server(
     let homeserver = json_data
         .get("homeserver")
         .and_then(|url| url.as_str())
-        .ok_or(anyhow::anyhow!("Missing or invalid homeserver configuration"))?;
+        .ok_or(anyhow::anyhow!("Missing or invalid Matrixbird configuration"))?;
 
     let mut hs = homeserver.to_string();
 
