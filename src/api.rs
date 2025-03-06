@@ -65,7 +65,7 @@ pub async fn transactions(
 
         if let Some(event_type) = event["type"].as_str() {
 
-            if event_type == "matrixbird.email.standard" {
+            if event_type.contains("matrixbird.email.standard") {
                 tracing::info!("Outgoing standard email: {}", event_type);
 
                 let reply_to = match event["content"]["to"].as_str() {
@@ -144,7 +144,7 @@ pub async fn transactions(
             }
 
 
-            if event_type == "matrixbird.email.matrix" {
+            if event_type.contains("matrixbird.email.matrix") {
                 tracing::info!("Outgoing matrix email: {}", event_type);
 
                 let user_id = match event["content"]["to"].as_str() {
