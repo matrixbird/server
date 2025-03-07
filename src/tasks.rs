@@ -220,13 +220,30 @@ pub async fn process_email(
     Some(html) => clean(&html),
     None => "".to_string(),
     };
-    */
+
 
     let email_body = EmailBody {
         text: payload.content.text.clone(),
         html: payload.content.html.clone(),
         //html: Some(safe_html),
     };
+
+    */
+
+    let email_body: EmailBody;
+
+    if let Some(html) = payload.content.html.clone() {
+        email_body = EmailBody {
+            text: None,
+            html: Some(html),
+        };
+    } else {
+        email_body = EmailBody {
+            text: payload.content.text.clone(),
+            html: None,
+        };
+    }
+
 
     let email_content = EmailContent {
         message_id: payload.message_id.clone(),

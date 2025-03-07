@@ -52,7 +52,9 @@ pub struct EmailContent {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct EmailBody {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub text: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub html: Option<String>,
 }
 
