@@ -181,6 +181,7 @@ pub async fn signup(
 
     let username = payload.username.clone();
     let access_token = resp.access_token.clone();
+    let user_id = resp.user_id.clone();
 
     let temp_state = state.clone();
 
@@ -188,14 +189,16 @@ pub async fn signup(
     //});
 
 
-    if let Ok(inbox) = tasks::build_user_inbox(
-        temp_state,
-        resp.user_id.clone(),
-        username,
-        access_token
-    ).await {
-        println!("Built user inbox: {:?}", inbox);
-    }
+    tokio::spawn(async move {
+        if let Ok(inbox) = tasks::build_user_inbox(
+            temp_state,
+            user_id,
+            username,
+            access_token
+        ).await {
+            println!("Built user inbox: {:?}", inbox);
+        }
+    });
 
     let user_id = resp.user_id.clone();
     let access_token = resp.access_token.clone();
