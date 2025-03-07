@@ -26,6 +26,14 @@ use ruma::{
 
 pub type HttpClient = ruma::client::http_client::HyperNativeTls;
 
+#[derive(Clone, Debug, Deserialize, Serialize, EventContent)]
+#[ruma_event(type = "matrixbird.thread.marker", kind = MessageLike)]
+pub struct ThreadMarkerContent {
+    pub msgtype: String,
+    #[serde(rename = "m.relates_to")]
+    pub m_relates_to: RelatesTo,
+}
+
 
 #[derive(Clone, Debug, Deserialize, Serialize, EventContent)]
 #[ruma_event(type = "matrixbird.email.matrix", kind = MessageLike)]

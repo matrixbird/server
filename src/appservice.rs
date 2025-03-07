@@ -210,7 +210,7 @@ impl AppService {
         room_id: OwnedRoomId, 
         message: ruma::serde::Raw<AnyMessageLikeEventContent>
     ) 
-    -> Result<OwnedEventId, anyhow::Error> {
+    -> Result<String, anyhow::Error> {
 
         let txn_id = TransactionId::new();
 
@@ -225,7 +225,7 @@ impl AppService {
             .send_request(req)
             .await?;
 
-        Ok(response.event_id)
+        Ok(response.event_id.to_string())
     }
 
     pub async fn send_to_inbox(
@@ -235,7 +235,7 @@ impl AppService {
         body: String,
         relation: Option<RelatesTo>,
     ) 
-    -> Result<OwnedEventId, anyhow::Error> {
+    -> Result<String, anyhow::Error> {
 
         let ev_type = MessageLikeEventType::from("matrixbird.email.matrix");
 
@@ -291,7 +291,7 @@ impl AppService {
             .send_request(req)
             .await?;
 
-        Ok(response.event_id)
+        Ok(response.event_id.to_string())
     }
 
 }

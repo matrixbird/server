@@ -28,7 +28,8 @@ use crate::hook::{
     EmailRequest,
     EmailBody,
     EmailContent,
-    RelatesTo
+    RelatesTo,
+    ThreadMarkerContent
 };
 
 use crate::appservice::HttpClient;
@@ -226,6 +227,7 @@ pub async fn process_email(
         html: payload.content.html.clone(),
         //html: Some(safe_html),
     };
+
     let email_content = EmailContent {
         message_id: payload.message_id.clone(),
         body: email_body,
@@ -245,9 +247,44 @@ pub async fn process_email(
         }
     };
 
-    if let Err(e) = state.appservice.send_message(ev_type, room_id, raw_event).await {
-        tracing::error!("Failed to send Matrix message: {}", e);
-        return;
+    match state.appservice.send_message(ev_type, room_id.clone(), raw_event).await {
+        Ok(event_id) => {
+            tracing::info!("Message sent successfully - event ID: {}", event_id);
+
+            tracing::info!("Sending thread marker event...");
+
+            let thread_marker = ThreadMarkerContent {
+                msgtype: "thread_marker".to_string(),
+                m_relates_to: RelatesTo {
+                    event_id: Some(event_id.clone()),
+                    m_in_reply_to: Some(event_id.clone()),
+                    rel_type: Some("m.thread".to_string()),
+                },
+            };
+
+            let raw_event = match ruma::serde::Raw::new(&thread_marker) {
+                Ok(raw) => raw.cast::<AnyMessageLikeEventContent>(),
+                Err(e) => {
+                    tracing::error!("Failed to create thread marker event: {}", e);
+                    return;
+                }
+            };
+
+            if let Err(e) = state.appservice.send_message(
+                MessageLikeEventType::from("matrixbird.thread.marker"),
+                room_id,
+                raw_event,
+            ).await {
+                tracing::error!("Failed to send thread marker event: {}", e);
+                return;
+            }
+
+
+        },
+        Err(e) => {
+            tracing::error!("Failed to send Matrix message: {}", e);
+            return;
+        }
     }
 
     if let Err(e) = state.db.set_email_processed(&payload.message_id).await {
@@ -381,13 +418,44 @@ pub async fn send_welcome(
         })
     ) {
         let subject = String::from("Welcome to Matrixbird");
-        if let Ok(res) = state.appservice.send_to_inbox(
+        if let Ok(event_id) = state.appservice.send_to_inbox(
             room_id.clone(),
             subject,
             body.clone().to_string(),
             None
         ).await {
-            tracing::info!("Welcome event sent - event ID: {:#?}", res);
+            tracing::info!("Welcome event sent - event ID: {:#?}", event_id);
+
+
+            tracing::info!("Sending thread marker event...");
+
+            let thread_marker = ThreadMarkerContent {
+                msgtype: "thread_marker".to_string(),
+                m_relates_to: RelatesTo {
+                    event_id: Some(event_id.clone()),
+                    m_in_reply_to: Some(event_id.clone()),
+                    rel_type: Some("m.thread".to_string()),
+                },
+            };
+
+            let raw_event = match ruma::serde::Raw::new(&thread_marker) {
+                Ok(raw) => raw.cast::<AnyMessageLikeEventContent>(),
+                Err(e) => {
+                    tracing::error!("Failed to create thread marker event: {}", e);
+                    return;
+                }
+            };
+
+            if let Err(e) = state.appservice.send_message(
+                MessageLikeEventType::from("matrixbird.thread.marker"),
+                room_id.clone(),
+                raw_event,
+            ).await {
+                tracing::error!("Failed to send thread marker event: {}", e);
+                return;
+            }
+
+
         };
     }
 
@@ -419,7 +487,7 @@ pub async fn send_welcome(
         tracing::info!("Development mode: Skipping welcome email");
     }
 
-    sleep(Duration::from_secs(3)).await;
+    //sleep(Duration::from_secs(3)).await;
 
     // send second matrix email
     if let Ok(body) = state.templates.render(
@@ -427,13 +495,42 @@ pub async fn send_welcome(
         json!({})
     ) {
         let subject = String::from("What is Matrixbird?");
-        if let Ok(res) = state.appservice.send_to_inbox(
-            room_id,
+        if let Ok(event_id) = state.appservice.send_to_inbox(
+            room_id.clone(),
             subject,
             body.clone().to_string(),
             None
         ).await {
-            tracing::info!("Welcome event sent - event ID: {:#?}", res);
+            tracing::info!("Welcome event sent - event ID: {:#?}", event_id);
+
+            tracing::info!("Sending thread marker event...");
+
+            let thread_marker = ThreadMarkerContent {
+                msgtype: "thread_marker".to_string(),
+                m_relates_to: RelatesTo {
+                    event_id: Some(event_id.clone()),
+                    m_in_reply_to: Some(event_id.clone()),
+                    rel_type: Some("m.thread".to_string()),
+                },
+            };
+
+            let raw_event = match ruma::serde::Raw::new(&thread_marker) {
+                Ok(raw) => raw.cast::<AnyMessageLikeEventContent>(),
+                Err(e) => {
+                    tracing::error!("Failed to create thread marker event: {}", e);
+                    return;
+                }
+            };
+
+            if let Err(e) = state.appservice.send_message(
+                MessageLikeEventType::from("matrixbird.thread.marker"),
+                room_id.clone(),
+                raw_event,
+            ).await {
+                tracing::error!("Failed to send thread marker event: {}", e);
+                return;
+            }
+
         };
     }
 
