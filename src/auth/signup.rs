@@ -8,32 +8,21 @@ use std::sync::Arc;
 
 use serde_json::json;
 
-use serde::{Serialize, Deserialize};
+use serde::Deserialize;
 
 use crate::AppState;
 use crate::error::AppserviceError;
 
 use crate::tasks;
 
-use ruma::{
-    events::macros::EventContent,
-    api::client::{
+use ruma::api::client::{
         account::register,
         account::get_username_availability,
         uiaa::AuthData,
         uiaa::Dummy,
-    },
 };
 
 use crate::appservice::HttpClient;
-
-#[derive(Clone, Debug, Deserialize, Serialize, EventContent)]
-#[ruma_event(type = "matrixbird.room.type", kind = State, state_key_type = String)]
-pub struct RoomTypeContent {
-    #[serde(rename = "type")]
-    room_type: String,
-}
-
 
 #[derive(Debug, Deserialize)]
 pub struct SignupRequest {

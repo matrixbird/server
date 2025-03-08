@@ -9,6 +9,7 @@ use ruma::{
     OwnedUserId,
     events::{
         AnyMessageLikeEventContent, 
+        AnyStateEvent,
         MessageLikeEventType,
         InitialStateEvent,
         GlobalAccountDataEventType,
@@ -133,7 +134,15 @@ pub async fn build_user_room(
         state_key: room_type.clone(),
     };
 
-    let raw_event = custom_state_event.to_raw_any();
+    //let raw_event = custom_state_event.to_raw_any();
+
+    let raw_event = match ruma::serde::Raw::new(&custom_state_event) {
+        Ok(raw) => raw.cast::<AnyStateEvent>(),
+        Err(e) => {
+            tracing::error!("Failed to create raw event: {}", e);
+            return Err(anyhow::anyhow!("Failed to create raw event"));
+        }
+    };
 
     req.initial_state = vec![raw_event];
     req.name = Some(room_type.clone());

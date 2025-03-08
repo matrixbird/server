@@ -19,15 +19,12 @@ use crate::utils::{get_localpart, get_email_subdomain};
 
 use crate::tasks;
 
-use ruma::{
-    api::client::account::get_username_availability,
-    events::macros::EventContent,
-};
+use ruma::
+    api::client::account::get_username_availability;
 
 pub type HttpClient = ruma::client::http_client::HyperNativeTls;
 
-#[derive(Clone, Debug, Deserialize, Serialize, EventContent)]
-#[ruma_event(type = "matrixbird.thread.marker", kind = MessageLike)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ThreadMarkerContent {
     pub msgtype: String,
     #[serde(rename = "m.relates_to")]
@@ -35,8 +32,7 @@ pub struct ThreadMarkerContent {
 }
 
 
-#[derive(Clone, Debug, Deserialize, Serialize, EventContent)]
-#[ruma_event(type = "matrixbird.email.matrix", kind = MessageLike)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct EmailContent {
     pub message_id: String,
     pub body: EmailBody,

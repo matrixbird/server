@@ -24,6 +24,7 @@ use ruma::{
             leave_room
         },
         profile::get_profile,
+        config::set_global_account_data,
     },
     events::{
         AnyMessageLikeEventContent, 
@@ -31,6 +32,8 @@ use ruma::{
         AnyTimelineEvent,
         AnyStateEvent, 
         StateEventType,
+        GlobalAccountDataEventType,
+        AnyGlobalAccountDataEventContent,
     }
 };
 
@@ -136,6 +139,39 @@ impl AppService {
             Err(anyhow::anyhow!("Room type not found"))
         }
 
+    }
+
+    pub async fn set_joined_room_account_data(&self, data_type: String, content: String) -> Result<(), anyhow::Error> {
+
+        let raw_event = ruma::serde::Raw::new(&content)?;
+        let raw = raw_event.cast::<AnyGlobalAccountDataEventContent>();
+
+        let req = set_global_account_data::v3::Request::new_raw(
+            *self.user_id.clone(),
+            GlobalAccountDataEventType::from(data_type),
+            raw
+        );
+
+        let _ = self.client
+            .send_request(req)
+            .await?;
+
+        Ok(())
+    }
+
+    pub async fn set_global_account_data(&self, data_type: String, content: ruma::serde::Raw<AnyGlobalAccountDataEventContent>) -> Result<(), anyhow::Error> {
+
+        let req = set_global_account_data::v3::Request::new_raw(
+            *self.user_id.clone(),
+            GlobalAccountDataEventType::from(data_type),
+            content
+        );
+
+        let _ = self.client
+            .send_request(req)
+            .await?;
+
+        Ok(())
     }
 
     pub async fn has_joined_room(&self, room_id: OwnedRoomId) -> bool {
