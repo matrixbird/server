@@ -146,12 +146,10 @@ pub async fn build_user_room(
         req.invite = vec![appservice_id];
     }
 
-    /*
     if room_type == "OUTBOX" {
         let appservice_id = *state.appservice.user_id.clone();
         req.invite = vec![appservice_id];
     }
-    */
 
     let resp = client.send_request(req).await?;
 
