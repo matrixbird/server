@@ -1,5 +1,7 @@
 use std::sync::Arc;
 use tokio::time::{sleep, Duration};
+use std::collections::HashMap;
+
 
 use ruma::{
     RoomAliasId,
@@ -41,76 +43,78 @@ pub struct RoomTypeContent {
     room_type: String,
 }
 
-#[derive(Serialize)]
-struct MatrixbirdRoomType {
-    room_id: String,
-}
-
-pub async fn build_user_inbox(
+pub async fn build_mailbox_rooms(
     state: Arc<AppState>,
     user_id: OwnedUserId,
-    username: String,
     access_token: Option<String>,
+    username: String,
 ) -> Result<(), anyhow::Error> {
 
-    let client = ruma::Client::builder()
-        .homeserver_url(state.config.matrix.homeserver.clone())
-        .access_token(access_token)
-        .build::<HttpClient>()
-        .await?;
+    tokio::spawn(async move {
 
-    let mut req = create_room::v3::Request::new();
+        let mut mailboxes = HashMap::new();
 
-    let rtc = RoomTypeContent {
-        room_type: "INBOX".to_string()
-    };
+        let rooms = Vec::from([
+            "INBOX",
+            "DRAFTS",
+            "OUTBOX",
+            //"SELF",
+            //"TRASH",
+            //"SPAM",
+        ]);
 
-    let custom_state_event = InitialStateEvent {
-        content: rtc,
-        state_key: "INBOX".to_string(), 
-    };
 
-    let raw_event = custom_state_event.to_raw_any();
+        for room in rooms {
+            let state_clone = state.clone();
+            let access_token_clone = access_token.clone();
 
-    req.initial_state = vec![raw_event];
-    req.name = Some("INBOX".to_string());
-    req.room_alias_name = Some(username);
-    req.preset = Some(create_room::v3::RoomPreset::TrustedPrivateChat);
-    req.topic = Some("INBOX".to_string());
+            if let Ok(room_id) = build_user_room(
+                state_clone,
+                username.clone(),
+                access_token_clone,
+                room.to_string()
+            ).await {
+                println!("Built user {} room: {:?}", room, room_id);
+                
+                mailboxes.insert(room.to_string(), room_id);
+            }
+        }
 
-    let appservice_id = *state.appservice.user_id.clone();
-    req.invite = vec![appservice_id];
+        println!("Mailboxes: {:?}", mailboxes);
 
-    let resp = client.send_request(req).await?;
+        let raw_event = ruma::serde::Raw::new(&mailboxes)?;
+        let raw = raw_event.cast::<AnyGlobalAccountDataEventContent>();
 
-    tracing::info!("INBOX room creation response: {:?}", resp);
+        let req = set_global_account_data::v3::Request::new_raw(
+            user_id,
+            GlobalAccountDataEventType::from("matrixbird.mailbox.rooms"),
+            raw
+        );
 
-    let value = MatrixbirdRoomType {
-        room_id: resp.room_id.to_string(),
-    };
+        let client = ruma::Client::builder()
+            .homeserver_url(state.config.matrix.homeserver.clone())
+            .access_token(access_token)
+            .build::<HttpClient>()
+            .await?;
 
-    let raw_event = ruma::serde::Raw::new(&value)?;
+        let resp = client.send_request(req).await?;
 
-    let raw = raw_event.cast::<AnyGlobalAccountDataEventContent>();
+        tracing::info!("Mailbox rooms global account data response: {:?}", resp);
 
-    let req = set_global_account_data::v3::Request::new_raw(
-        user_id,
-        GlobalAccountDataEventType::from("matrixbird.room.inbox"),
-        raw
-    );
+        Ok::<(), Box<dyn std::error::Error + Send + Sync>>(())
 
-    let resp = client.send_request(req).await?;
+    });
 
-    tracing::info!("INBOX global account data response: {:?}", resp);
+
     Ok(())
 }
 
 pub async fn build_user_room(
     state: Arc<AppState>,
-    user_id: OwnedUserId,
+    username: String,
     access_token: Option<String>,
     room_type: String,
-) -> Result<(), anyhow::Error> {
+) -> Result<String, anyhow::Error> {
 
     let client = ruma::Client::builder()
         .homeserver_url(state.config.matrix.homeserver.clone())
@@ -136,31 +140,25 @@ pub async fn build_user_room(
     req.preset = Some(create_room::v3::RoomPreset::TrustedPrivateChat);
     req.topic = Some(room_type.clone());
 
+    if room_type == "INBOX" {
+        req.room_alias_name = Some(username);
+        let appservice_id = *state.appservice.user_id.clone();
+        req.invite = vec![appservice_id];
+    }
+
+    /*
+    if room_type == "OUTBOX" {
+        let appservice_id = *state.appservice.user_id.clone();
+        req.invite = vec![appservice_id];
+    }
+    */
+
     let resp = client.send_request(req).await?;
 
     tracing::info!("{} room creation response: {:?}", room_type, resp);
 
-    let value = MatrixbirdRoomType {
-        room_id: resp.room_id.to_string(),
-    };
 
-    let raw_event = ruma::serde::Raw::new(&value)?;
-
-    let raw = raw_event.cast::<AnyGlobalAccountDataEventContent>();
-
-    let key = format!("matrixbird.room.{}", room_type.to_lowercase());
-
-    let req = set_global_account_data::v3::Request::new_raw(
-        user_id,
-        GlobalAccountDataEventType::from(key),
-        raw
-    );
-
-    let resp = client.send_request(req).await?;
-
-    tracing::info!("{} global account data response: {:?}", room_type, resp);
-
-    Ok(())
+    Ok(resp.room_id.to_string())
 }
 
 

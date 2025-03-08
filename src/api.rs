@@ -192,20 +192,30 @@ pub async fn transactions(
             MembershipState::Invite => {
                 info!("Joining room: {}", room_id);
 
-                state.appservice.join_room(room_id.clone()).await;
+            if let Ok(room_id) =  state.appservice.join_room(room_id.clone()).await{
 
-                let localpart = sender.localpart().to_owned();
+                if let Ok(room_type) = state.appservice.get_room_type(room_id.clone(), "INBOX".to_string()).await{
+                    if room_type == "INBOX" {
 
-                let state_clone = state.clone();
+                        let localpart = sender.localpart().to_owned();
 
-                // Send welcome emails and messages
-                tokio::spawn(async move {
-                    tasks::send_welcome(
-                        state_clone, 
-                        &localpart,
-                        room_id,
-                    ).await;
-                });
+                        let state_clone = state.clone();
+
+                        // Send welcome emails and messages
+                        tokio::spawn(async move {
+                            tasks::send_welcome(
+                                state_clone, 
+                                &localpart,
+                                room_id,
+                            ).await;
+                        });
+
+                    }
+                }
+
+
+
+        };
 
 
             }

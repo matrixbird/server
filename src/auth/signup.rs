@@ -181,52 +181,16 @@ pub async fn signup(
 
     let username = payload.username.clone();
     let access_token = resp.access_token.clone();
-
     let temp_state = state.clone();
 
-    //tokio::spawn(async move {
-    //});
-
-
-    if let Ok(inbox) = tasks::build_user_inbox(
+    if let Ok(inbox) = tasks::build_mailbox_rooms(
         temp_state,
         resp.user_id.clone(),
+        access_token,
         username,
-        access_token
     ).await {
-        println!("Built user inbox: {:?}", inbox);
+        println!("Built mailbox rooms: {:?}", inbox);
     }
-
-    let user_id = resp.user_id.clone();
-    let access_token = resp.access_token.clone();
-    let temp_state = state.clone();
-
-    tokio::spawn(async move {
-        if let Ok(inbox) = tasks::build_user_room(
-            temp_state,
-            user_id,
-            access_token,
-            String::from("DRAFTS")
-        ).await {
-            println!("Built user drafts room: {:?}", inbox);
-        }
-    });
-
-    let user_id = resp.user_id.clone();
-    let access_token = resp.access_token.clone();
-    let temp_state = state.clone();
-
-    tokio::spawn(async move {
-        if let Ok(inbox) = tasks::build_user_room(
-            temp_state,
-            user_id,
-            access_token,
-            String::from("SELF")
-        ).await {
-            println!("Built user drafts room: {:?}", inbox);
-        }
-    });
-
 
 
     if let Some(access_token) = resp.access_token.clone() {

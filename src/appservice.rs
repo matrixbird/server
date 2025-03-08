@@ -104,16 +104,38 @@ impl AppService {
         Ok(r)
     }
 
-    pub async fn join_room(&self, room_id: OwnedRoomId) {
+    pub async fn join_room(&self, room_id: OwnedRoomId) -> Result<OwnedRoomId, anyhow::Error> {
 
         let jr = self.client
             .send_request(join_room_by_id::v3::Request::new(
                 room_id
             ))
-            .await
-            .ok();
+            .await?;
 
         println!("Join room: {:#?}", jr);
+
+        Ok(jr.room_id)
+    }
+
+    pub async fn get_room_type(&self, room_id: OwnedRoomId, room_type: String) -> Result<String, anyhow::Error> {
+
+        let jr = self.client
+            .send_request(get_state_events_for_key::v3::Request::new(
+                room_id,
+                StateEventType::from("matrixbird.room.type"),
+                room_type
+            ))
+            .await?;
+
+        if let Ok(room_type) = jr.content.get_field::<String>("type") {
+            match room_type {
+                Some(rt) => Ok(rt),
+                None => Err(anyhow::anyhow!("Room type not found"))
+            }
+        } else {
+            Err(anyhow::anyhow!("Room type not found"))
+        }
+
     }
 
     pub async fn has_joined_room(&self, room_id: OwnedRoomId) -> bool {
@@ -129,6 +151,7 @@ impl AppService {
 
         jr.is_some()
     }
+
 
     pub async fn get_room_state(&self, room_id: OwnedRoomId) ->
     Option<RoomState> {
