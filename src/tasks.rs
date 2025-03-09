@@ -9,7 +9,6 @@ use ruma::{
     OwnedUserId,
     events::{
         AnyMessageLikeEventContent, 
-        AnyStateEvent,
         MessageLikeEventType,
         InitialStateEvent,
         GlobalAccountDataEventType,
@@ -134,28 +133,16 @@ pub async fn build_user_room(
         state_key: room_type.clone(),
     };
 
-    //let raw_event = custom_state_event.to_raw_any();
-
-    let raw_event = match ruma::serde::Raw::new(&custom_state_event) {
-        Ok(raw) => raw.cast::<AnyStateEvent>(),
-        Err(e) => {
-            tracing::error!("Failed to create raw event: {}", e);
-            return Err(anyhow::anyhow!("Failed to create raw event"));
-        }
-    };
+    let raw_event = custom_state_event.to_raw_any();
 
     req.initial_state = vec![raw_event];
     req.name = Some(room_type.clone());
     req.preset = Some(create_room::v3::RoomPreset::TrustedPrivateChat);
     req.topic = Some(room_type.clone());
 
-    if room_type == "INBOX" {
-        req.room_alias_name = Some(username);
-        let appservice_id = *state.appservice.user_id.clone();
-        req.invite = vec![appservice_id];
-    }
+    req.room_alias_name = Some(format!("{}_{}", username, room_type));
 
-    if room_type == "OUTBOX" {
+    if room_type == "INBOX" || room_type == "OUTBOX" {
         let appservice_id = *state.appservice.user_id.clone();
         req.invite = vec![appservice_id];
     }
@@ -198,7 +185,7 @@ pub async fn process_email(
 
     // Try to send Matrix message
     let server_name = state.config.matrix.server_name.clone();
-    let raw_alias = format!("#{}:{}", user, server_name);
+    let raw_alias = format!("#{}_INBOX:{}", user, server_name);
 
     // Early return if we can't parse the alias
     let alias = match RoomAliasId::parse(&raw_alias) {
@@ -444,6 +431,7 @@ pub async fn send_welcome(
             room_id.clone(),
             subject,
             body.clone().to_string(),
+            None,
             None
         ).await {
             tracing::info!("Welcome event sent - event ID: {:#?}", event_id);
@@ -521,6 +509,7 @@ pub async fn send_welcome(
             room_id.clone(),
             subject,
             body.clone().to_string(),
+            None,
             None
         ).await {
             tracing::info!("Welcome event sent - event ID: {:#?}", event_id);
@@ -624,7 +613,8 @@ pub async fn process_reply(
             room_id.clone(),
             subject,
             body.clone().to_string(),
-            Some(relation)
+            Some(relation),
+            Some("matrixbird.email.reply".to_string()),
         ).await {
             tracing::info!("Auto reply sent - event ID: {:#?}", res);
         };

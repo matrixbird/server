@@ -293,10 +293,18 @@ impl AppService {
         subject: String,
         body: String,
         relation: Option<RelatesTo>,
+        event_type: Option<String>,
     ) 
     -> Result<String, anyhow::Error> {
 
-        let ev_type = MessageLikeEventType::from("matrixbird.email.matrix");
+        let mut ev_type = MessageLikeEventType::from("matrixbird.email.matrix");
+
+        match event_type {
+            Some(et) => {
+                ev_type = MessageLikeEventType::from(et);
+            },
+            None => (),
+        }
 
         let mid_localpart = Uuid::new_v4().to_string();
         let message_id = format!("{}@{}", mid_localpart, "matrixbird.com");

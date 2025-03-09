@@ -144,7 +144,7 @@ pub async fn transactions(
             }
 
 
-            if event_type.contains("matrixbird.email.matrix") {
+            if event_type.contains("matrixbird.email.reply") {
                 tracing::info!("Outgoing matrix email: {}", event_type);
 
                 let user_id = match event["content"]["to"].as_str() {
