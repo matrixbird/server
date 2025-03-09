@@ -93,6 +93,15 @@ pub fn get_localpart(email: String) -> Option<(String, Option<String>)> {
     })
 }
 
+pub fn get_mxid_localpart(mxid: &str) -> Option<&str> {
+    if mxid.starts_with('@') {
+        if let Some(pos) = mxid.find(':') {
+            return Some(&mxid[1..pos]);
+        }
+    }
+    None
+}
+
 pub fn email_to_matrix_id(email: &str) -> Option<String> {
     let parts: Vec<&str> = email.split('@').collect();
     if parts.len() == 2 {

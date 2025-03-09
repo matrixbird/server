@@ -6,8 +6,10 @@ use axum::{
 
 use ruma::events::room::
     member::{RoomMemberEvent, MembershipState};
+use ruma::OwnedRoomId;
 
 
+use serde::{Serialize, Deserialize};
 use serde_json::{Value, json};
 use std::sync::Arc;
 use tracing::info;
@@ -17,6 +19,41 @@ use crate::AppState;
 use crate::tasks;
 
 use crate::utils::replace_email_domain;
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct EmailReviewEvent {
+    pub event_id: String,
+    pub room_id: OwnedRoomId,
+    pub sender: String,
+    #[serde(rename = "type")]
+    pub event_type: String,
+    pub content: EmailReviewEventContent,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct EmailReviewEventContent {
+    pub from: String,
+    pub to: Vec<String>,
+    pub subject: Option<String>,
+    pub body: EmailBody,
+    pub invite_room_id: String,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct EmailBody {
+    pub text: Option<String>,
+    pub html: Option<String>,
+}
+
+fn deserialize_review_event(json: &str, user: String) -> Result<EmailReviewEvent, anyhow::Error> {
+    let event: EmailReviewEvent = serde_json::from_str(json)?;
+    if event.event_type == "matrixbird.email.review" && 
+        event.sender != user {
+        Ok(event)
+    } else {
+        Err(anyhow::anyhow!("Not an email review event"))
+    }
+}
 
 pub async fn transactions(
     State(state): State<Arc<AppState>>,
@@ -63,6 +100,20 @@ pub async fn transactions(
             }
         });
 
+        /*
+        if let Some(event_type) = event["type"].as_str() {
+
+            if event_type == "matrixbird.email.review" {
+                let to = match event["content"]["to"].as_str() {
+                    Some(to) => to,
+                    None => ""
+                };
+            }
+
+        }
+*/
+
+        // Handle outgoing emails
         if let Some(event_type) = event["type"].as_str() {
 
             if event_type.contains("matrixbird.email.standard") {
@@ -166,6 +217,31 @@ pub async fn transactions(
 
             }
 
+        }
+
+        // if this is a review event, send it to the recipient's inbox
+        match deserialize_review_event(&event.to_string(), state.appservice.user_id()) {
+            Ok(review_event) => {
+                info!("Review event: {:#?}", review_event);
+
+                let review_event_copy = review_event.clone();
+
+                for recipient in review_event_copy.content.to {
+
+                    let state_copy = state.clone();
+                    let review_event_copy = review_event.clone();
+
+                    tokio::spawn(async move {
+                        tasks::send_email_review(
+                            state_copy,
+                            review_event_copy,
+                            recipient.to_string(),
+                        ).await;
+                    });
+                }
+                
+            },
+            Err(_) => {}
         }
 
 

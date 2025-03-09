@@ -23,16 +23,19 @@ use serde_json::{json, Value};
 
 use serde::{Serialize, Deserialize};
 
-use crate::utils::get_localpart;
+use crate::utils::{get_localpart, get_mxid_localpart};
 
 use crate::AppState;
 use crate::hook::{
     EmailRequest,
     EmailBody,
     EmailContent,
+    ReviewEmailContent,
     RelatesTo,
     ThreadMarkerContent
 };
+
+use crate::api::EmailReviewEvent;
 
 use crate::appservice::HttpClient;
 
@@ -620,3 +623,89 @@ pub async fn process_reply(
         };
     }
 }
+
+pub async fn send_email_review(
+    state: Arc<AppState>,
+    event: EmailReviewEvent,
+    user: String,
+) {
+    println!("User: {}", user);
+
+    let localpart = match get_mxid_localpart(&user) {
+        Some(localpart) => localpart,
+        None => {
+            tracing::error!("Failed to get localpart from user ID");
+            return;
+        }
+    };
+
+    println!("Localpart: {}", localpart);
+
+    // Try to send Matrix message
+    let server_name = state.config.matrix.server_name.clone();
+    let raw_alias = format!("#{}_INBOX:{}", localpart, server_name);
+
+    // Early return if we can't parse the alias
+    let alias = match RoomAliasId::parse(&raw_alias) {
+        Ok(alias) => alias,
+        Err(e) => {
+            tracing::error!("Failed to parse room alias: {}", e);
+            return;
+        }
+    };
+
+    println!("Alias: {:?}", alias);
+
+    // Early return if we can't get the room ID
+    let room_id = match state.appservice.room_id_from_alias(alias).await {
+        Some(id) => id,
+        None => {
+            tracing::error!("Failed to get room ID for alias");
+            return;
+        }
+    };
+
+    let ev_type = MessageLikeEventType::from("matrixbird.email.review");
+
+    let email_body: EmailBody;
+
+    if let Some(html) = event.content.body.html.clone() {
+        email_body = EmailBody {
+            text: None,
+            html: Some(html),
+        };
+    } else {
+        email_body = EmailBody {
+            text: event.content.body.text.clone(),
+            html: None,
+        };
+    }
+
+    let email_content = ReviewEmailContent {
+        body: email_body,
+        from: event.content.from.clone(),
+        subject: event.content.subject.clone(),
+        to: event.content.to.clone(),
+        invite_room_id: event.content.invite_room_id.clone(),
+    };
+
+    // Create and send the message
+    let raw_event = match ruma::serde::Raw::new(&email_content) {
+        Ok(raw) => raw.cast::<AnyMessageLikeEventContent>(),
+        Err(e) => {
+            tracing::error!("Failed to create raw event: {}", e);
+            return;
+        }
+    };
+
+    match state.appservice.send_message(ev_type, room_id.clone(), raw_event).await {
+        Ok(event_id) => {
+            tracing::info!("Email review sent to inbox - event ID: {}", event_id);
+        },
+        Err(e) => {
+            tracing::error!("Failed to send email review event: {}", e);
+            return;
+        }
+    }
+}
+

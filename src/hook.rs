@@ -62,6 +62,15 @@ pub struct RelatesTo {
     pub rel_type: Option<String>,
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct ReviewEmailContent {
+    pub body: EmailBody,
+    pub from: String,
+    pub subject: Option<String>,
+    pub to: Vec<String>,
+    pub invite_room_id: String,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct EmailRequest {
     pub message_id: String,
