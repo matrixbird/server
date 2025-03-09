@@ -219,6 +219,7 @@ pub async fn transactions(
 
         }
 
+        /*
         // if this is a review event, send it to the recipient's inbox
         match deserialize_review_event(&event.to_string(), state.appservice.user_id()) {
             Ok(review_event) => {
@@ -243,6 +244,7 @@ pub async fn transactions(
             },
             Err(_) => {}
         }
+    */
 
 
 
