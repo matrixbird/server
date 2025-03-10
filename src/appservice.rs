@@ -1,6 +1,8 @@
 use crate::config::Config;
 use chrono::Utc;
 
+use serde::{Serialize, Deserialize};
+
 use ruma::{
     OwnedRoomId,
     OwnedEventId,
@@ -16,7 +18,8 @@ use ruma::{
         message::send_message_event,
         state::{
             get_state_events, 
-            get_state_events_for_key
+            get_state_events_for_key,
+            send_state_event,
         },
         room::get_room_event,
         membership::{
@@ -31,6 +34,7 @@ use ruma::{
         MessageLikeEventType,
         AnyTimelineEvent,
         AnyStateEvent, 
+        AnyStateEventContent,
         StateEventType,
         GlobalAccountDataEventType,
         AnyGlobalAccountDataEventContent,
@@ -40,6 +44,8 @@ use ruma::{
 use uuid::Uuid;
 
 use anyhow;
+
+use crate::tasks::{EmailStateContent, PendingEmailsContent};
 
 use crate::hook::{EmailBody, EmailContent, Address, RelatesTo};
 
@@ -140,6 +146,146 @@ impl AppService {
         }
 
     }
+
+    pub async fn get_pending_email(&self, room_id: OwnedRoomId) -> Result<Option<Vec<EmailStateContent>>, anyhow::Error> {
+
+        let jr = self.client
+            .send_request(get_state_events_for_key::v3::Request::new(
+                room_id,
+                StateEventType::from("matrixbird.email.pending"),
+                "".to_string()
+            ))
+            .await?;
+
+        if let Ok(pending) = jr.content.get_field::<Vec<EmailStateContent>>("pending") {
+            match pending {
+                Some(pending) => {
+                    tracing::info!("Pending: {:#?}", pending);
+                    Ok(Some(pending))
+                },
+                None => Ok(Some(vec![]))
+            }
+        } else {
+            Err(anyhow::anyhow!("Pending emails not found"))
+        }
+
+    }
+
+    pub async fn set_pending_email(&self, room_id: OwnedRoomId, event_id: String) -> Result<OwnedEventId, anyhow::Error> {
+
+        let res = self.get_pending_email(room_id.clone()).await?;
+
+        let mut pending = match res {
+            Some(p) => p,
+            None => vec![]
+        };
+
+
+        let state = EmailStateContent {
+            event_id,
+            state: "pending".to_string(),
+        };
+
+        pending.push(state);
+
+        let content = PendingEmailsContent {
+            pending,
+        };
+
+        let raw_event = ruma::serde::Raw::new(&content)?;
+        let raw = raw_event.cast::<AnyStateEventContent>();
+
+        let req = send_state_event::v3::Request::new_raw(
+            room_id,
+            StateEventType::from("matrixbird.email.pending"),
+            "".to_string(),
+            raw
+        );
+
+        let res = self.client
+            .send_request(req)
+            .await?;
+
+        Ok(res.event_id)
+
+    }
+
+
+    pub async fn get_email_screen_rule(&self, room_id: OwnedRoomId, address: String) -> Result<String, anyhow::Error> {
+
+        let jr = self.client
+            .send_request(get_state_events_for_key::v3::Request::new(
+                room_id,
+                StateEventType::from("matrixbird.email.rule"),
+                address
+            ))
+            .await?;
+
+        if let Ok(screen_rule) = jr.content.get_field::<String>("rule") {
+            match screen_rule {
+                Some(rule) => {
+                    tracing::info!("Allow: {:#?}", rule);
+                    Ok(rule)
+                }
+                None => Ok("".to_string())
+            }
+        } else {
+            Err(anyhow::anyhow!("Screen rule not found"))
+        }
+
+    }
+
+    pub async fn set_email_screen_rule(&self, room_id: OwnedRoomId, address: String, rule: String, event_id: String) -> Result<OwnedEventId, anyhow::Error> {
+
+
+        #[derive(Serialize, Deserialize)]
+        struct Content {
+            rule: String,
+            event_id: String,
+        }
+
+        let content = Content {
+            rule,
+            event_id,
+        };
+
+        let raw_event = ruma::serde::Raw::new(&content)?;
+        let raw = raw_event.cast::<AnyStateEventContent>();
+
+        let req = send_state_event::v3::Request::new_raw(
+            room_id,
+            StateEventType::from("matrixbird.email.rule"),
+            address,
+            raw
+        );
+
+        let res = self.client
+            .send_request(req)
+            .await?;
+
+        Ok(res.event_id)
+
+    }
+
+    pub async fn set_state_event(&self, room_id: OwnedRoomId, data_type: String, state_key: String, content: String) -> Result<OwnedEventId, anyhow::Error> {
+
+        let raw_event = ruma::serde::Raw::new(&content)?;
+        let raw = raw_event.cast::<AnyStateEventContent>();
+
+        let req = send_state_event::v3::Request::new_raw(
+            room_id,
+            StateEventType::from(data_type),
+            state_key,
+            raw
+        );
+
+        let res = self.client
+            .send_request(req)
+            .await?;
+
+        Ok(res.event_id)
+    }
+
 
     pub async fn set_joined_room_account_data(&self, data_type: String, content: String) -> Result<(), anyhow::Error> {
 

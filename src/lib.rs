@@ -15,7 +15,7 @@ pub mod domain;
 pub mod error;
 pub mod utils;
 
-use tokio::time::{interval, Duration};
+//use tokio::time::{interval, Duration};
 
 use std::sync::Arc;
 use axum::body::Body;
@@ -86,6 +86,7 @@ impl AppState {
 
         let cron_state = state.clone();
 
+        /*
         tokio::spawn(async move {
             let mut interval = interval(Duration::from_secs(60 * 5)); 
             
@@ -94,6 +95,7 @@ impl AppState {
                 tasks::process_failed_emails(cron_state.clone()).await;
             }
         });
+        */
 
         Ok(state)
     }

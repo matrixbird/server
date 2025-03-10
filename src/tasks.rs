@@ -46,6 +46,19 @@ pub struct RoomTypeContent {
     room_type: String,
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize, EventContent)]
+#[ruma_event(type = "matrixbird.email.pending", kind = State, state_key_type = String)]
+pub struct PendingEmailsContent {
+    pub pending: Vec<EmailStateContent>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct EmailStateContent {
+    pub event_id: String,
+    pub state: String,
+}
+
+
 pub async fn build_mailbox_rooms(
     state: Arc<AppState>,
     user_id: OwnedUserId,
@@ -60,7 +73,8 @@ pub async fn build_mailbox_rooms(
         let rooms = Vec::from([
             "INBOX",
             "DRAFTS",
-            "OUTBOX",
+            //"SCREEN",
+            //"OUTBOX",
             //"SELF",
             //"TRASH",
             //"SPAM",
@@ -139,15 +153,35 @@ pub async fn build_user_room(
     let raw_event = custom_state_event.to_raw_any();
 
     req.initial_state = vec![raw_event];
+
+    if room_type == "INBOX" {
+
+        let pec = PendingEmailsContent {
+            pending: Vec::new(),
+        };
+
+        let custom_state_event = InitialStateEvent {
+            content: pec,
+            state_key: "".to_string(),
+        };
+
+        let raw_event = custom_state_event.to_raw_any();
+
+        req.initial_state.push(raw_event);
+    }
+
+
     req.name = Some(room_type.clone());
     req.preset = Some(create_room::v3::RoomPreset::TrustedPrivateChat);
     req.topic = Some(room_type.clone());
 
     req.room_alias_name = Some(format!("{}_{}", username, room_type));
 
-    if room_type == "INBOX" || room_type == "OUTBOX" {
+    //if room_type == "INBOX" || room_type == "SCREEN" {
+    if room_type == "INBOX" {
         let appservice_id = *state.appservice.user_id.clone();
         req.invite = vec![appservice_id];
+
     }
 
     let resp = client.send_request(req).await?;
@@ -158,6 +192,63 @@ pub async fn build_user_room(
     Ok(resp.room_id.to_string())
 }
 
+
+fn build_event(
+    payload: &EmailRequest,
+) -> Result<ruma::serde::Raw<AnyMessageLikeEventContent>, anyhow::Error>
+{
+
+    /*
+    let safe_html = match payload.content.html.clone() {
+    Some(html) => clean(&html),
+    None => "".to_string(),
+    };
+
+
+    let email_body = EmailBody {
+        text: payload.content.text.clone(),
+        html: payload.content.html.clone(),
+        //html: Some(safe_html),
+    };
+
+    */
+
+    let email_body: EmailBody;
+
+    if let Some(html) = payload.content.html.clone() {
+        email_body = EmailBody {
+            text: None,
+            html: Some(html),
+        };
+    } else {
+        email_body = EmailBody {
+            text: payload.content.text.clone(),
+            html: None,
+        };
+    }
+
+
+    let email_content = EmailContent {
+        message_id: payload.message_id.clone(),
+        body: email_body,
+        from: payload.from.clone(),
+        subject: payload.subject.clone(),
+        date: payload.date.clone(),
+        attachments: payload.attachments.clone(),
+        m_relates_to: None,
+    };
+
+    // Create and send the message
+    let raw_event = match ruma::serde::Raw::new(&email_content) {
+        Ok(raw) => raw.cast::<AnyMessageLikeEventContent>(),
+        Err(e) => {
+            tracing::error!("Failed to create raw event: {}", e);
+            return Err(anyhow::Error::msg("Failed to create raw event"));
+        }
+    };
+
+    Ok(raw_event)
+}
 
 pub async fn process_email(
     state: Arc<AppState>,
@@ -208,87 +299,101 @@ pub async fn process_email(
         }
     };
 
-    let ev_type = MessageLikeEventType::from("matrixbird.email.standard");
-
-    /*
-    let safe_html = match payload.content.html.clone() {
-    Some(html) => clean(&html),
-    None => "".to_string(),
+    let address = payload.envelope_from.clone();
+    let rule = match state.appservice.get_email_screen_rule(room_id.clone(), address.clone()).await {
+        Ok(rule) => rule,
+        Err(e) => {
+            tracing::error!("Failed to get email allow rule: {}", e);
+            "".to_string()
+        }
     };
 
+    let allow = rule == "allow";
+    let reject = rule == "reject";
+    //let pending = rule == "pending";
+    let none = rule == "";
 
-    let email_body = EmailBody {
-        text: payload.content.text.clone(),
-        html: payload.content.html.clone(),
-        //html: Some(safe_html),
-    };
+    tracing::info!("Allowed to send to inbox?: {:?}", rule);
 
-    */
-
-    let email_body: EmailBody;
-
-    if let Some(html) = payload.content.html.clone() {
-        email_body = EmailBody {
-            text: None,
-            html: Some(html),
-        };
-    } else {
-        email_body = EmailBody {
-            text: payload.content.text.clone(),
-            html: None,
-        };
+    if reject {
+        tracing::info!("Email rejected by rule");
+        return;
     }
 
 
-    let email_content = EmailContent {
-        message_id: payload.message_id.clone(),
-        body: email_body,
-        from: payload.from.clone(),
-        subject: payload.subject.clone(),
-        date: payload.date.clone(),
-        attachments: payload.attachments.clone(),
-        m_relates_to: None,
-    };
-
+    let ev_type = MessageLikeEventType::from("matrixbird.email.standard");
     // Create and send the message
-    let raw_event = match ruma::serde::Raw::new(&email_content) {
-        Ok(raw) => raw.cast::<AnyMessageLikeEventContent>(),
+    let raw_event = match build_event(&payload) {
+        Ok(raw) => raw,
         Err(e) => {
             tracing::error!("Failed to create raw event: {}", e);
             return;
         }
     };
 
-    match state.appservice.send_message(ev_type, room_id.clone(), raw_event).await {
+    match state.appservice.send_message(ev_type.clone(), room_id.clone(), raw_event.clone()).await {
         Ok(event_id) => {
             tracing::info!("Message sent successfully - event ID: {}", event_id);
+            // set pending state event
+            if none {
 
-            tracing::info!("Sending thread marker event...");
+                if let Ok(_) = state.appservice.set_pending_email(room_id.clone(), event_id.clone()).await{
+                    tracing::info!("Pending email set successfully");
+                    tracing::info!("Pending email set successfully");
+                    tracing::info!("Pending email set successfully");
+                }
 
-            let thread_marker = ThreadMarkerContent {
-                msgtype: "thread_marker".to_string(),
-                m_relates_to: RelatesTo {
-                    event_id: Some(event_id.clone()),
-                    m_in_reply_to: Some(event_id.clone()),
-                    rel_type: Some("m.thread".to_string()),
-                },
-            };
+                /*
+                let pending = state.appservice.get_pending_email(room_id.clone()).await;
+                match pending {
+                    Ok(Some(mut pending)) => {
+                        pending.push(event_id.clone());
+                        if let Ok(_) = state.appservice.set_pending_email(room_id.clone(), pending).await{
+                            tracing::info!("Pending email set successfully");
+                        }
+                    },
+                    Ok(None) => {
+                        let pending = vec![event_id.clone()];
+                        if let Ok(_) = state.appservice.set_pending_email(room_id.clone(), pending).await{
+                            tracing::info!("Pending email set successfully");
+                        }
+                    },
+                    Err(e) => {
+                        tracing::error!("Failed to get pending emails: {}", e);
+                    }
+                }
+                */
+            }
 
-            let raw_event = match ruma::serde::Raw::new(&thread_marker) {
-                Ok(raw) => raw.cast::<AnyMessageLikeEventContent>(),
-                Err(e) => {
-                    tracing::error!("Failed to create thread marker event: {}", e);
+            // set thread marker
+            if allow {
+                tracing::info!("Sending thread marker event...");
+
+                let thread_marker = ThreadMarkerContent {
+                    msgtype: "thread_marker".to_string(),
+                    m_relates_to: RelatesTo {
+                        event_id: Some(event_id.clone()),
+                        m_in_reply_to: Some(event_id.clone()),
+                        rel_type: Some("m.thread".to_string()),
+                    },
+                };
+
+                let raw_event = match ruma::serde::Raw::new(&thread_marker) {
+                    Ok(raw) => raw.cast::<AnyMessageLikeEventContent>(),
+                    Err(e) => {
+                        tracing::error!("Failed to create thread marker event: {}", e);
+                        return;
+                    }
+                };
+
+                if let Err(e) = state.appservice.send_message(
+                    MessageLikeEventType::from("matrixbird.thread.marker"),
+                    room_id,
+                    raw_event,
+                ).await {
+                    tracing::error!("Failed to send thread marker event: {}", e);
                     return;
                 }
-            };
-
-            if let Err(e) = state.appservice.send_message(
-                MessageLikeEventType::from("matrixbird.thread.marker"),
-                room_id,
-                raw_event,
-            ).await {
-                tracing::error!("Failed to send thread marker event: {}", e);
-                return;
             }
 
 
@@ -298,6 +403,7 @@ pub async fn process_email(
             return;
         }
     }
+
 
     if let Err(e) = state.db.set_email_processed(&payload.message_id).await {
         tracing::error!("Failed to mark email as processed: {}", e);

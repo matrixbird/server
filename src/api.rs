@@ -45,6 +45,7 @@ pub struct EmailBody {
     pub html: Option<String>,
 }
 
+/*
 fn deserialize_review_event(json: &str, user: String) -> Result<EmailReviewEvent, anyhow::Error> {
     let event: EmailReviewEvent = serde_json::from_str(json)?;
     if event.event_type == "matrixbird.email.review" && 
@@ -54,6 +55,7 @@ fn deserialize_review_event(json: &str, user: String) -> Result<EmailReviewEvent
         Err(anyhow::anyhow!("Not an email review event"))
     }
 }
+*/
 
 pub async fn transactions(
     State(state): State<Arc<AppState>>,
