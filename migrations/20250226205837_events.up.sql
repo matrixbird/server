@@ -8,6 +8,7 @@ CREATE TABLE events (
     relates_to_event_id TEXT,
     in_reply_to TEXT,
     rel_type TEXT,
+    message_id TEXT,
     json JSONB NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -20,6 +21,7 @@ CREATE INDEX idx_events_recipients ON events(recipients);
 CREATE INDEX idx_events_relates_to_event_id ON events(relates_to_event_id);
 CREATE INDEX idx_events_in_reply_to ON events(in_reply_to);
 CREATE INDEX idx_events_rel_type ON events(rel_type);
+CREATE INDEX idx_events_message_id ON events(message_id);
 CREATE INDEX idx_events_created_at ON events(created_at);
 
 CREATE INDEX idx_events_jsonb ON events USING GIN (json);

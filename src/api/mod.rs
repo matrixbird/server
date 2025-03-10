@@ -105,6 +105,8 @@ async fn store_event_to_db(
         None => None
     };
 
+    let message_id = event["content"]["message_id"].as_str();
+
     let relates_to_event_id = event["content"]["m.relates_to"]["event_id"].as_str();
     let relates_to_in_reply_to = event["content"]["m.relates_to"]["m.in_reply_to"].as_str();
     let relates_to_rel_type = event["content"]["m.relates_to"]["rel_type"].as_str();
@@ -121,6 +123,7 @@ async fn store_event_to_db(
                 relates_to_event_id,
                 relates_to_in_reply_to,
                 relates_to_rel_type,
+                message_id
             ).await{
                 tracing::warn!("Failed to store event: {:#?}", e);
             }
