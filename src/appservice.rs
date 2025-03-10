@@ -210,8 +210,38 @@ impl AppService {
 
     }
 
+    pub async fn get_email_screen(&self, room_id: OwnedRoomId) -> Result<bool, anyhow::Error> {
+
+        let jr = self.client
+            .send_request(get_state_events_for_key::v3::Request::new(
+                room_id,
+                StateEventType::from("matrixbird.email.screen"),
+                "".to_string()
+            ))
+            .await?;
+
+        if let Ok(screen) = jr.content.get_field::<bool>("screen") {
+            match screen {
+                Some(screen) => {
+                    tracing::info!("Screen emails?: {:#?}", screen);
+                    Ok(screen)
+                }
+                None => Ok(false)
+            }
+        } else {
+            Err(anyhow::anyhow!("Email screen state event not found"))
+        }
+
+    }
+
 
     pub async fn get_email_screen_rule(&self, room_id: OwnedRoomId, address: String) -> Result<String, anyhow::Error> {
+
+        if let Ok(screen) = self.get_email_screen(room_id.clone()).await {
+            if !screen {
+                return Ok("allow".to_string());
+            }
+        }
 
         let jr = self.client
             .send_request(get_state_events_for_key::v3::Request::new(

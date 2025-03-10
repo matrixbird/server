@@ -109,7 +109,7 @@ pub async fn signup(
 
     let mut req = register::v3::Request::new();
 
-    req.username = Some(payload.username.clone());
+    req.username = Some(payload.username.clone().to_lowercase());
     req.password = Some(payload.password.clone());
 
     let dum = Dummy::new();

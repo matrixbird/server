@@ -43,7 +43,7 @@ pub async fn username_available(
         .await.unwrap();
 
     let av = get_username_availability::v3::Request::new(
-        username.clone()
+        username.clone().to_lowercase()
     );
 
     if let Ok(res) = client.send_request(av).await {

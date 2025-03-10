@@ -40,6 +40,12 @@ use crate::api::EmailReviewEvent;
 use crate::appservice::HttpClient;
 
 #[derive(Clone, Debug, Deserialize, Serialize, EventContent)]
+#[ruma_event(type = "matrixbird.email.screen", kind = State, state_key_type = String)]
+pub struct ScreenEmailsContent {
+    pub screen: bool,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, EventContent)]
 #[ruma_event(type = "matrixbird.room.type", kind = State, state_key_type = String)]
 pub struct RoomTypeContent {
     #[serde(rename = "type")]
@@ -155,6 +161,19 @@ pub async fn build_user_room(
     req.initial_state = vec![raw_event];
 
     if room_type == "INBOX" {
+
+        let sec = ScreenEmailsContent {
+            screen: false,
+        };
+
+        let custom_state_event = InitialStateEvent {
+            content: sec,
+            state_key: "".to_string(),
+        };
+
+        let raw_event = custom_state_event.to_raw_any();
+
+        req.initial_state.push(raw_event);
 
         let pec = PendingEmailsContent {
             pending: Vec::new(),
@@ -300,6 +319,7 @@ pub async fn process_email(
     };
 
     let address = payload.envelope_from.clone();
+
     let rule = match state.appservice.get_email_screen_rule(room_id.clone(), address.clone()).await {
         Ok(rule) => rule,
         Err(e) => {
