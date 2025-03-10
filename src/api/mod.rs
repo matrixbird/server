@@ -1,6 +1,7 @@
 use axum::{
     extract::State,
     http::StatusCode,
+    response::{IntoResponse, Response},
     Json,
 };
 
@@ -12,7 +13,7 @@ use ruma::OwnedRoomId;
 use serde::{Serialize, Deserialize};
 use serde_json::{Value, json};
 use std::sync::Arc;
-use tracing::info;
+use tracing::{info, warn};
 
 use crate::AppState;
 
@@ -57,6 +58,80 @@ fn deserialize_review_event(json: &str, user: String) -> Result<EmailReviewEvent
 }
 */
 
+#[derive(Debug)]
+enum TransactionError {
+    InvalidInput(String),
+    DatabaseError(String),
+    EmailError(String),
+}
+
+impl TransactionError {
+    fn log(&self) {
+        match self {
+            Self::InvalidInput(msg) => warn!("Invalid input: {}", msg),
+            Self::DatabaseError(msg) => warn!("Database error: {}", msg),
+            Self::EmailError(msg) => warn!("Email error: {}", msg),
+        }
+    }
+}
+
+impl IntoResponse for TransactionError {
+    fn into_response(self) -> Response {
+        self.log();
+        (StatusCode::OK, Json(json!({}))).into_response()
+    }
+}
+
+async fn store_event_to_db(
+    state: Arc<AppState>,
+    event: Value,
+) {
+
+    let event_id = event["event_id"].as_str();
+    let room_id = event["room_id"].as_str();
+    let sender = event["sender"].as_str();
+    let event_type = event["type"].as_str();
+
+    let recipients = match event["content"]["recipients"].as_array() {
+        Some(recipients) => {
+            let mut recipients_vec = Vec::new();
+            for recipient in recipients {
+                if let Some(recipient) = recipient.as_str() {
+                    recipients_vec.push(recipient);
+                }
+            }
+            Some(recipients_vec)
+        },
+        None => None
+    };
+
+    let relates_to_event_id = event["content"]["m.relates_to"]["event_id"].as_str();
+    let relates_to_in_reply_to = event["content"]["m.relates_to"]["m.in_reply_to"].as_str();
+    let relates_to_rel_type = event["content"]["m.relates_to"]["rel_type"].as_str();
+
+    match (event_id, room_id, sender, event_type) {
+        (Some(event_id), Some(room_id), Some(sender), Some(event_type)) => {
+            if let Err(e) =  state.db.store_event(
+                event_id,
+                room_id,
+                event_type,
+                sender,
+                event.clone(),
+                recipients,
+                relates_to_event_id,
+                relates_to_in_reply_to,
+                relates_to_rel_type,
+            ).await{
+                tracing::warn!("Failed to store event: {:#?}", e);
+            }
+
+        },
+        _ => {
+            tracing::warn!("Missing event fields");
+        }
+    }
+}
+
 pub async fn transactions(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<Value>,
@@ -77,29 +152,9 @@ pub async fn transactions(
         let state_copy = state.clone();
         let event_copy = event.clone();
 
+
         tokio::spawn(async move {
-
-            let event_id = event_copy["event_id"].as_str();
-            let room_id = event_copy["room_id"].as_str();
-            let sender = event_copy["sender"].as_str();
-            let event_type = event_copy["type"].as_str();
-
-            match (event_id, room_id, sender, event_type) {
-                (Some(event_id), Some(room_id), Some(sender), Some(event_type)) => {
-                    if let Err(e) =  state_copy.db.store_event(
-                        event_id,
-                        room_id,
-                        event_type,
-                        sender,
-                        event_copy.clone(),
-                    ).await{
-                        tracing::warn!("Failed to store event: {:#?}", e);
-                    }
-
-                },
-                _ => {
-                }
-            }
+            store_event_to_db(state_copy, event_copy).await;
         });
 
         /*
