@@ -110,14 +110,17 @@ impl Server {
             .route("/homeserver", get(homeserver));
 
 
-        let mut base_routes = Router::new()
+        let base_routes = Router::new()
+            .route("/hook", post(hook))
             .route("/health", get(health))
             .route("/version", get(version))
             .route("/", get(index));
 
+        /*
         if self.state.config.email.enabled {
             base_routes = base_routes.route("/hook", post(hook));
         }
+        */
 
         let app = Router::new()
             .nest("/_matrix/app/v1", service_routes)

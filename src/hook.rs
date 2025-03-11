@@ -175,6 +175,12 @@ pub async fn hook(
     Json(payload): Json<EmailRequest>,
 ) -> Json<HookResponse> {
 
+
+    if state.config.email.enabled == false {
+        tracing::info!("Email integration is disabled. Rejecting email.");
+        return Json(HookResponse::reject())
+    }
+
     tracing::info!("Incoming email");
     tracing::info!("Message ID: {:?}", payload.message_id);
     tracing::info!("From: {:?}", payload.envelope_from);
