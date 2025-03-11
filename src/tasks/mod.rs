@@ -351,9 +351,12 @@ pub async fn process_email(
         }
     };
 
+    let mut ev_id = String::new();
+
     match state.appservice.send_message(ev_type.clone(), room_id.clone(), raw_event.clone()).await {
         Ok(event_id) => {
             tracing::info!("Message sent successfully - event ID: {}", event_id);
+            ev_id = event_id.clone();
             // set pending state event
             if none {
 
@@ -425,7 +428,7 @@ pub async fn process_email(
     }
 
 
-    if let Err(e) = state.db.set_email_processed(&payload.message_id).await {
+    if let Err(e) = state.db.set_email_processed(&payload.message_id, ev_id).await {
         tracing::error!("Failed to mark email as processed: {}", e);
         return;
     }
@@ -528,12 +531,24 @@ pub async fn process_failed_email(
         }
     };
 
-    if let Err(e) = state.appservice.send_message(ev_type, room_id, raw_event).await {
-        tracing::error!("Failed to send Matrix message: {}", e);
-        return;
+    let mut ev_id = String::new();
+
+    let res = state.appservice.send_message(ev_type, room_id, raw_event).await;
+
+    match res {
+        Ok(event_id) => {
+            tracing::info!("Message sent successfully - event ID: {}", event_id);
+            ev_id = event_id.clone();
+        },
+        Err(e) => {
+            tracing::error!("Failed to send Matrix message: {}", e);
+            return;
+        }
     }
 
-    if let Err(e) = state.db.set_email_processed(&payload.message_id).await {
+
+
+    if let Err(e) = state.db.set_email_processed(&payload.message_id, ev_id).await {
         tracing::error!("Failed to mark email as processed: {}", e);
         return;
     }
@@ -594,15 +609,13 @@ pub async fn send_welcome(
                 return;
             }
 
-
         };
     }
 
     // send welcome email 
-    if !state.development_mode() {
+    if state.config.email.send_welcome_emails {
 
         let to = format!("{}@{}", local_part, state.config.email.domain);
-
 
         let sent = state.mail.send(
             &to,

@@ -19,6 +19,7 @@ server_name = "localhost:8480"
 
 [email]
 domain = "matrixbird.com"
+send_welcome_emails = true
 
 [features]
 registration_enabled = true

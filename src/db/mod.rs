@@ -82,12 +82,13 @@ impl Database {
         Ok(())
     }
 
-    pub async fn set_email_processed(&self, message_id: &str) -> Result<(), anyhow::Error> {
+    pub async fn set_email_processed(&self, message_id: &str, event_id: String) -> Result<(), anyhow::Error> {
 
         let now = sqlx::types::time::OffsetDateTime::now_utc();
 
-        sqlx::query("UPDATE emails SET processed = true, processed_at = $1 WHERE message_id = $2;")
+        sqlx::query("UPDATE emails SET processed = true, processed_at = $1, event_id = $2 WHERE message_id = $3;")
             .bind(now)
+            .bind(event_id)
             .bind(message_id)
             .execute(&self.pool)
             .await?;
