@@ -113,6 +113,7 @@ impl Server {
             .route("/homeserver", get(homeserver))
             .nest("/auth", auth_routes)
             .route("/health", get(health))
+            .route("/version", get(version))
             .route("/", get(index))
             .layer(self.setup_cors(&self.state.config))
             .layer(TraceLayer::new_for_http()
@@ -175,5 +176,17 @@ pub async fn index(
     let domain = state.config.matrix.server_name.clone();
     let url = format!("https://{}", domain);
     Redirect::temporary(&url)
+}
+
+pub async fn version(
+) -> Result<impl IntoResponse, ()> {
+
+    let version = env!("CARGO_PKG_VERSION");
+    let hash = env!("GIT_COMMIT_HASH");
+
+    Ok(Json(json!({
+        "version": version,
+        "commit": hash,
+    })))
 }
 
