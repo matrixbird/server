@@ -242,7 +242,7 @@ async fn build_event(
     };
 
     match (payload.content.html.clone(), payload.content.text.clone()) {
-        (Some(html), Some(_)) => {
+        (Some(html), Some(_)) | (Some(html), None) => {
 
             if html.len() > MAX_EVENT_SIZE_BYTES {
                 if let Ok(uri) = state.appservice.upload_large_email(html).await {
@@ -250,6 +250,8 @@ async fn build_event(
                 } else {
                     tracing::error!("Failed to upload large email content");
                 }
+            } else {
+                email_body.html = Some(html);
             }
         },
         (None, Some(text)) => {
@@ -259,11 +261,12 @@ async fn build_event(
                 } else {
                     tracing::error!("Failed to upload large email content");
                 }
+            } else {
+                email_body.text = Some(text);
             }
         },
         _ => {}
     }
-
 
     let email_content = EmailContent {
         message_id: payload.message_id.clone(),
