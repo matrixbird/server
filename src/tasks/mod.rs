@@ -233,7 +233,7 @@ async fn build_event(
 
     */
 
-    const MAX_EVENT_SIZE_BYTES: usize = 40_000;
+    const MAX_EVENT_SIZE_BYTES: usize = 20_000;
 
     let mut email_body = EmailBody {
         text: None,
@@ -244,7 +244,7 @@ async fn build_event(
     match (payload.content.html.clone(), payload.content.text.clone()) {
         (Some(html), Some(_)) | (Some(html), None) => {
 
-            if html.len() > MAX_EVENT_SIZE_BYTES {
+            if html.as_bytes().len() > MAX_EVENT_SIZE_BYTES {
                 if let Ok(uri) = state.appservice.upload_large_email(html).await {
                     email_body.content_uri = Some(uri);
                 } else {
@@ -255,7 +255,7 @@ async fn build_event(
             }
         },
         (None, Some(text)) => {
-            if text.len() > MAX_EVENT_SIZE_BYTES {
+            if text.as_bytes().len() > MAX_EVENT_SIZE_BYTES {
                 if let Ok(uri) = state.appservice.upload_large_email(text).await {
                     email_body.content_uri = Some(uri);
                 } else {
