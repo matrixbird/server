@@ -16,6 +16,7 @@ use ruma::{
         account::whoami, 
         membership::joined_rooms, 
         message::send_message_event,
+        media::create_content,
         state::{
             get_state_events, 
             get_state_events_for_key,
@@ -496,6 +497,7 @@ impl AppService {
         let body = EmailBody{
             text: None,
             html: Some(body),
+            content_uri: None,
         };
 
         let mut em_cont = EmailContent{
@@ -535,6 +537,24 @@ impl AppService {
             .await?;
 
         Ok(response.event_id.to_string())
+    }
+
+    pub async fn upload_large_email(
+        &self, 
+        body: String,
+    ) -> Result<String, anyhow::Error> {
+
+        let file: Vec<u8> = body.into_bytes();
+
+        let req = create_content::v3::Request::new(
+            file
+        );
+
+        let res = self.client
+            .send_request(req)
+            .await?;
+
+        Ok(res.content_uri.to_string())
     }
 
 }

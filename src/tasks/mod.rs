@@ -212,7 +212,8 @@ pub async fn build_user_room(
 }
 
 
-fn build_event(
+async fn build_event(
+    state: Arc<AppState>,
     payload: &EmailRequest,
 ) -> Result<ruma::serde::Raw<AnyMessageLikeEventContent>, anyhow::Error>
 {
@@ -232,18 +233,35 @@ fn build_event(
 
     */
 
-    let email_body: EmailBody;
+    const MAX_EVENT_SIZE_BYTES: usize = 40_000;
 
-    if let Some(html) = payload.content.html.clone() {
-        email_body = EmailBody {
-            text: None,
-            html: Some(html),
-        };
-    } else {
-        email_body = EmailBody {
-            text: payload.content.text.clone(),
-            html: None,
-        };
+    let mut email_body = EmailBody {
+        text: None,
+        html: None,
+        content_uri: None,
+    };
+
+    match (payload.content.html.clone(), payload.content.text.clone()) {
+        (Some(html), Some(_)) => {
+
+            if html.len() > MAX_EVENT_SIZE_BYTES {
+                if let Ok(uri) = state.appservice.upload_large_email(html).await {
+                    email_body.content_uri = Some(uri);
+                } else {
+                    tracing::error!("Failed to upload large email content");
+                }
+            }
+        },
+        (None, Some(text)) => {
+            if text.len() > MAX_EVENT_SIZE_BYTES {
+                if let Ok(uri) = state.appservice.upload_large_email(text).await {
+                    email_body.content_uri = Some(uri);
+                } else {
+                    tracing::error!("Failed to upload large email content");
+                }
+            }
+        },
+        _ => {}
     }
 
 
@@ -343,7 +361,7 @@ pub async fn process_email(
 
     let ev_type = MessageLikeEventType::from("matrixbird.email.standard");
     // Create and send the message
-    let raw_event = match build_event(&payload) {
+    let raw_event = match build_event(state.clone(), &payload).await {
         Ok(raw) => raw,
         Err(e) => {
             tracing::error!("Failed to create raw event: {}", e);
@@ -509,6 +527,7 @@ pub async fn process_failed_email(
     let email_body = EmailBody {
         text: payload.content.text.clone(),
         html: payload.content.html.clone(),
+        content_uri: None,
         //html: Some(safe_html),
     };
 
@@ -812,11 +831,13 @@ pub async fn send_email_review(
         email_body = EmailBody {
             text: None,
             html: Some(html),
+            content_uri: None,
         };
     } else {
         email_body = EmailBody {
             text: event.content.body.text.clone(),
             html: None,
+            content_uri: None,
         };
     }
 

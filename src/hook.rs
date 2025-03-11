@@ -52,6 +52,8 @@ pub struct EmailBody {
     pub text: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub html: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub content_uri: Option<String>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
