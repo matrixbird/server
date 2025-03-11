@@ -32,6 +32,7 @@ pub struct Features {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Email {
+    pub enabled: bool,
     pub domain: String,
     pub send_welcome_emails: bool,
 }

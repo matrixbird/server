@@ -104,17 +104,26 @@ impl Server {
             .route("/email/verify", post(verify_email))
             .route("/code/verify", post(verify_code));
 
+        let email_routes = Router::new()
+            .route("/domain/:domain", get(validate_domain))
+            .route("/email/:email", get(is_matrix_email))
+            .route("/homeserver", get(homeserver));
+
+
+        let mut base_routes = Router::new()
+            .route("/health", get(health))
+            .route("/version", get(version))
+            .route("/", get(index));
+
+        if self.state.config.email.enabled {
+            base_routes = base_routes.route("/hook", post(hook));
+        }
 
         let app = Router::new()
             .nest("/_matrix/app/v1", service_routes)
-            .route("/hook", post(hook))
-            .route("/domain/:domain", get(validate_domain))
-            .route("/email/:email", get(is_matrix_email))
-            .route("/homeserver", get(homeserver))
             .nest("/auth", auth_routes)
-            .route("/health", get(health))
-            .route("/version", get(version))
-            .route("/", get(index))
+            .nest("/", email_routes)
+            .nest("/", base_routes)
             .layer(self.setup_cors(&self.state.config))
             .layer(TraceLayer::new_for_http()
                 .make_span_with(|request: &Request<_>| {
