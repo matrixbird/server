@@ -1,3 +1,4 @@
+use thiserror::Error;
 use axum::{
     body::Body,
     extract::{
@@ -12,16 +13,14 @@ use axum::{
         Uri, 
         header::AUTHORIZATION
     },
-    response::IntoResponse,
+    response::{IntoResponse, Response},
     middleware::Next,
     Json,
     Extension
 };
 
-use ruma::{
-    RoomId, 
-    RoomAliasId,
-};
+use ruma::api::client::account::whoami;
+
 
 use serde_json::{
     json, 
@@ -29,11 +28,74 @@ use serde_json::{
 };
 
 use std::sync::Arc;
+use crate::appservice::HttpClient;
 
 use crate::AppState;
-use crate::utils::room_id_valid;
 
-use crate::error::AppserviceError;
+#[derive(Error, Debug)]
+pub enum MiddlewareError {
+    #[error("M_FORBIDDEN")]
+    Unauthorized,
+    #[error("Authentication error: {0}")]
+    AuthenticationError(String),
+    #[error("Homeserver unreachable: {0}")]
+    HomeserverError(String),
+}
+
+impl IntoResponse for MiddlewareError {
+    fn into_response(self) -> Response {
+        let (status, message) = match self {
+            MiddlewareError::Unauthorized => (StatusCode::FORBIDDEN, self.to_string()),
+            MiddlewareError::AuthenticationError(_) => (StatusCode::FORBIDDEN, self.to_string()),
+            MiddlewareError::HomeserverError(_) => (StatusCode::BAD_GATEWAY, self.to_string()),
+
+        };
+
+        (status, Json(json!({ "error": message }))).into_response()
+    }
+}
+
+
+pub async fn authenticate_user(
+    State(state): State<Arc<AppState>>,
+    mut req: Request<Body>,
+    next: Next,
+) -> Result<Response, MiddlewareError> {
+
+    let auth_header = req
+        .headers()
+        .get(AUTHORIZATION)
+        .ok_or_else(|| MiddlewareError::Unauthorized)?
+        .to_str()
+        .map_err(|_| MiddlewareError::Unauthorized)?;
+
+
+    let token = extract_token(auth_header)
+        .ok_or_else(|| MiddlewareError::Unauthorized)?;
+
+    let client = ruma::Client::builder()
+        .homeserver_url(state.config.matrix.homeserver.clone())
+        .access_token(Some(token.to_string()))
+        .build::<HttpClient>().await
+        .map_err(|e| MiddlewareError::AuthenticationError(e.to_string()))?;
+
+
+    let whoami = client
+        .send_request(whoami::v3::Request::new())
+        .await
+        .map_err(|e| MiddlewareError::HomeserverError(e.to_string()))?;
+
+
+    let data = Data {
+        user_id: whoami.user_id.to_string(),
+    };
+
+    req.extensions_mut().insert(data);
+
+    Ok(next.run(req).await)
+
+}
+
 
 pub async fn authenticate_homeserver(
     State(state): State<Arc<AppState>>,
@@ -70,107 +132,6 @@ pub fn extract_token(header: &str) -> Option<&str> {
 
 #[derive(Clone)]
 pub struct Data {
-    pub modified_path: Option<String>,
-    pub room_id: Option<String>,
+    pub user_id: String,
 }
 
-pub async fn validate_room_id(
-    Path(params): Path<Vec<(String, String)>>,
-    State(state): State<Arc<AppState>>,
-    mut req: Request<Body>,
-    next: Next,
-) -> Result<impl IntoResponse, (StatusCode, Json<Value>)> {
-
-    let room_id = params[0].1.clone();
-
-    let server_name = state.config.matrix.server_name.clone();
-
-    let mut data = Data {
-        modified_path: None,
-        room_id: Some(room_id.clone()),
-    };
-
-    if let Err(_) = room_id_valid(&room_id, &server_name) {
-
-        let raw_alias = format!("#{}:{}", room_id, server_name);
-
-        if let Ok(alias) = RoomAliasId::parse(&raw_alias) {
-            let id = state.appservice.room_id_from_alias(alias).await;
-            match id {
-                Some(id) => {
-                    println!("Fetched Room ID: {:#?}", id);
-                    data.room_id = Some(id.to_string());
-                }
-                None => {
-                    println!("Failed to get room ID from alias: {}", raw_alias);
-                }
-            }
-        }
-
-
-        if let Some(path) = req.extensions().get::<MatchedPath>() {
-            let pattern = path.as_str();
-            
-            // Split into segments, skipping the empty first segment
-            let pattern_segments: Vec<&str> = pattern.split('/').filter(|s| !s.is_empty()).collect();
-
-            let fullpath = if let Some(path) = req.extensions().get::<OriginalUri>() {
-                path.0.path()
-            } else {
-                req.uri().path()
-            };
-
-            let path_segments: Vec<&str> = fullpath.split('/').filter(|s| !s.is_empty()).collect();
-            
-            if let Some(segment_index) = pattern_segments.iter().position(|&s| s == ":room_id") {
-                println!("Found :room_id at segment index: {}", segment_index);
-                let mut new_segments = path_segments.clone();
-                if segment_index < new_segments.len() {
-
-                    new_segments[segment_index] = data.room_id.as_ref().unwrap();
-                    
-                    // Rebuild the path with leading slash
-                    let new_path = format!("/{}", new_segments.join("/"));
-                    
-                    // Preserve query string if it exists
-                    let new_uri = if let Some(query) = req.uri().query() {
-                        format!("{}?{}", new_path, query).parse::<Uri>().unwrap()
-                    } else {
-                        new_path.parse::<Uri>().unwrap()
-                    };
-                    
-                    data.modified_path = Some(new_uri.to_string());
-                }
-            }
-        }
-
-    }
-
-    req.extensions_mut().insert(data);
-
-    Ok(next.run(req).await)
-}
-
-
-pub async fn validate_public_room(
-    Extension(data): Extension<Data>,
-    //Path(params): Path<Vec<(String, String)>>,
-    State(state): State<Arc<AppState>>,
-    req: Request<Body>,
-    next: Next,
-) -> Result<impl IntoResponse, AppserviceError> {
-
-    let room_id = data
-        .room_id
-        .as_ref()
-        .ok_or(AppserviceError::AppserviceError("No room ID found".to_string()))?;
-
-    let id = RoomId::parse(room_id)
-        .map_err(|_| AppserviceError::AppserviceError("Invalid room ID".to_string()))?;
-
-    if !state.appservice.has_joined_room(id).await {
-        return Err(AppserviceError::AppserviceError("User is not in room".to_string()));
-    }
-
-    Ok(next.run(req).await)
-}
