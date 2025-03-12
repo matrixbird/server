@@ -19,7 +19,7 @@ impl Keys {
         let private_key_path = format!("{}.public.key", config.matrix.server_name);
 
         if !std::path::Path::new(&public_key_path).exists() || 
-            !std::path::Path::new(&private_key_path).exists() {
+        !std::path::Path::new(&private_key_path).exists() {
             generate_keys(&public_key_path, &private_key_path)
                 .expect("Could not generate keypair.");
         }
@@ -32,8 +32,33 @@ impl Keys {
                 anyhow::bail!("Could not read keys: {}", e);
             }
         }
-
     }
+
+    pub fn sign_message(&self, message: &str) -> String {
+        let signature: Signature = self.signing_key.sign(message.as_bytes());
+        BASE64_STANDARD.encode(signature.to_bytes())
+    }
+
+    pub fn verify_signature(&self, verifying_key: &str, message: &str, signature: &str) -> Result<bool, anyhow::Error> {
+
+
+        let verifying_key_bytes = BASE64_STANDARD.decode(verifying_key)
+            .map_err(|e| anyhow::anyhow!("Could not decode public key. {}", e))?;
+        let bon = <[u8; 32]>::try_from(verifying_key_bytes)
+            .map_err(|_| anyhow::anyhow!("Could not convert public key bytes."))?;
+
+        let verifying_key = VerifyingKey::from_bytes(&bon)
+            .map_err(|_| anyhow::anyhow!("Could not create verifying key."))?;
+
+
+        let signature_bytes = BASE64_STANDARD.decode(signature.trim())?;
+        let con = <[u8; 64]>::try_from(signature_bytes)
+            .map_err(|_| anyhow::anyhow!("Could not convert signature bytes."))?;
+        let signature = Signature::from_bytes(&con);
+        let ok = verifying_key.verify(message.as_bytes(), &signature).is_ok();
+        Ok(ok)
+    }
+
 }
 
 pub fn generate_keys(public_key_path: &str, private_key_path: &str) -> Result<(), anyhow::Error> {
@@ -52,8 +77,8 @@ pub fn generate_keys(public_key_path: &str, private_key_path: &str) -> Result<()
     public_file.write_all(public_key_base64.as_bytes())?;
 
     tracing::info!("Keypair generated and saved!");
-    tracing::info!("Private key stored as Base64 in '{}'", private_key_path);
-    tracing::info!("Public key stored as Hex in '{}'", public_key_path);
+    tracing::info!("Private key stored '{}'", private_key_path);
+    tracing::info!("Public key stored '{}'", public_key_path);
 
     Ok(())
 }
@@ -90,13 +115,4 @@ pub fn read_keys(public_key_path: &str, private_key_path: &str) -> Result<Keys, 
         verifying_key,
     })
 }
-
-pub fn sign_message(signing_key: &SigningKey, message: &[u8]) -> Signature {
-    signing_key.sign(message)
-}
-
-pub fn verify_signature(verifying_key: &VerifyingKey, message: &[u8], signature: &Signature) -> bool {
-    verifying_key.verify(message, signature).is_ok()
-}
-
 
