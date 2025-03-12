@@ -59,7 +59,7 @@ impl AppState {
 
         let providers = email::EmailProviders::new("data/providers.json")?;
 
-        let keys = crypto::Keys::new()?;
+        let keys = crypto::Keys::new(&config)?;
 
         let mode = match &config.mode {
             Some(mode) => {

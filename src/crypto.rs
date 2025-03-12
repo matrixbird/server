@@ -4,8 +4,7 @@ use std::fs::{File, OpenOptions};
 use std::io::{Read, Write};
 use base64::prelude::*;
 
-const PRIVATE_KEY_PATH: &str = "private.key";
-const PUBLIC_KEY_PATH: &str = "public.key";
+use crate::config::Config;
 
 #[derive(Clone, Debug)]
 pub struct Keys {
@@ -14,15 +13,18 @@ pub struct Keys {
 }
 
 impl Keys {
-    pub fn new() -> Result<Self, anyhow::Error> {
+    pub fn new(config: &Config) -> Result<Self, anyhow::Error> {
 
-    if !std::path::Path::new(PRIVATE_KEY_PATH).exists() || 
-        !std::path::Path::new(PUBLIC_KEY_PATH).exists() {
-        generate_keys()
-            .expect("Could not generate keypair.");
-    }
+        let public_key_path = format!("{}.private.key", config.matrix.server_name);
+        let private_key_path = format!("{}.public.key", config.matrix.server_name);
 
-    let keys = read_keys();
+        if !std::path::Path::new(&public_key_path).exists() || 
+            !std::path::Path::new(&private_key_path).exists() {
+            generate_keys(&public_key_path, &private_key_path)
+                .expect("Could not generate keypair.");
+        }
+
+        let keys = read_keys(&public_key_path, &private_key_path);
 
         match keys {
             Ok(keys) => Ok(keys),
@@ -34,7 +36,7 @@ impl Keys {
     }
 }
 
-pub fn generate_keys() -> Result<(), anyhow::Error> {
+pub fn generate_keys(public_key_path: &str, private_key_path: &str) -> Result<(), anyhow::Error> {
     let mut csprng = OsRng;
     let signing_key = SigningKey::generate(&mut csprng);
     let verifying_key = signing_key.verifying_key();
@@ -43,26 +45,26 @@ pub fn generate_keys() -> Result<(), anyhow::Error> {
 
     let public_key_base64 = BASE64_STANDARD.encode(verifying_key.to_bytes());
 
-    let mut private_file = File::create(PRIVATE_KEY_PATH)?;
+    let mut private_file = File::create(private_key_path)?;
     private_file.write_all(private_key_base64.as_bytes())?;
 
-    let mut public_file = File::create(PUBLIC_KEY_PATH)?;
+    let mut public_file = File::create(public_key_path)?;
     public_file.write_all(public_key_base64.as_bytes())?;
 
     tracing::info!("Keypair generated and saved!");
-    tracing::info!("Private key stored as Base64 in '{}'", PRIVATE_KEY_PATH);
-    tracing::info!("Public key stored as Hex in '{}'", PUBLIC_KEY_PATH);
+    tracing::info!("Private key stored as Base64 in '{}'", private_key_path);
+    tracing::info!("Public key stored as Hex in '{}'", public_key_path);
 
     Ok(())
 }
 
-pub fn read_keys() -> Result<Keys, anyhow::Error> {
+pub fn read_keys(public_key_path: &str, private_key_path: &str) -> Result<Keys, anyhow::Error> {
 
     let mut private_key_base64 = String::new();
 
     OpenOptions::new()
         .read(true)
-        .open(PRIVATE_KEY_PATH)?
+        .open(private_key_path)?
         .read_to_string(&mut private_key_base64)
         .expect("Could not read private key.");
 
@@ -74,7 +76,7 @@ pub fn read_keys() -> Result<Keys, anyhow::Error> {
 
     OpenOptions::new()
         .read(true)
-        .open(PUBLIC_KEY_PATH)?
+        .open(public_key_path)?
         .read_to_string(&mut public_key_base64)
         .expect("Could not read public key.");
 
