@@ -15,16 +15,16 @@ pub struct Keys {
 impl Keys {
     pub fn new(config: &Config) -> Result<Self, anyhow::Error> {
 
-        let public_key_path = format!("{}.private.key", config.matrix.server_name);
-        let private_key_path = format!("{}.public.key", config.matrix.server_name);
+        let private_key_path = format!("{}.private.key", config.matrix.server_name);
+        let public_key_path = format!("{}.public.key", config.matrix.server_name);
 
         if !std::path::Path::new(&public_key_path).exists() || 
         !std::path::Path::new(&private_key_path).exists() {
-            generate_keys(&public_key_path, &private_key_path)
+            generate_keys(&private_key_path, &public_key_path)
                 .expect("Could not generate keypair.");
         }
 
-        let keys = read_keys(&public_key_path, &private_key_path);
+        let keys = read_keys(&private_key_path, &public_key_path);
 
         match keys {
             Ok(keys) => Ok(keys),
@@ -41,17 +41,17 @@ impl Keys {
 
     pub fn verify_signature(&self, verifying_key: &str, message: &str, signature: &str) -> Result<bool, anyhow::Error> {
 
-
-        let verifying_key_bytes = BASE64_STANDARD.decode(verifying_key)
+        let verifying_key_bytes = BASE64_STANDARD.decode(verifying_key.trim())
             .map_err(|e| anyhow::anyhow!("Could not decode public key. {}", e))?;
         let bon = <[u8; 32]>::try_from(verifying_key_bytes)
             .map_err(|_| anyhow::anyhow!("Could not convert public key bytes."))?;
 
         let verifying_key = VerifyingKey::from_bytes(&bon)
-            .map_err(|_| anyhow::anyhow!("Could not create verifying key."))?;
+            .map_err(|e| anyhow::anyhow!("Could not create verifying key. {}", e))?;
 
 
-        let signature_bytes = BASE64_STANDARD.decode(signature.trim())?;
+        let signature_bytes = BASE64_STANDARD.decode(signature.trim())
+            .map_err(|e| anyhow::anyhow!("Could not decode signature. {}", e))?;
         let con = <[u8; 64]>::try_from(signature_bytes)
             .map_err(|_| anyhow::anyhow!("Could not convert signature bytes."))?;
         let signature = Signature::from_bytes(&con);
@@ -61,7 +61,7 @@ impl Keys {
 
 }
 
-pub fn generate_keys(public_key_path: &str, private_key_path: &str) -> Result<(), anyhow::Error> {
+pub fn generate_keys(private_key_path: &str, public_key_path: &str) -> Result<(), anyhow::Error> {
     let mut csprng = OsRng;
     let signing_key = SigningKey::generate(&mut csprng);
     let verifying_key = signing_key.verifying_key();
@@ -83,7 +83,7 @@ pub fn generate_keys(public_key_path: &str, private_key_path: &str) -> Result<()
     Ok(())
 }
 
-pub fn read_keys(public_key_path: &str, private_key_path: &str) -> Result<Keys, anyhow::Error> {
+pub fn read_keys(private_key_path: &str, public_key_path: &str) -> Result<Keys, anyhow::Error> {
 
     let mut private_key_base64 = String::new();
 

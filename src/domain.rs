@@ -151,6 +151,9 @@ async fn query_server(
         .and_then(|url| url.as_str())
         .ok_or(anyhow::anyhow!("Homeserver does not support Matrixbird."))?;
 
+    let pub_key = json_data["matrixbird.server"]["public_key"].as_str()
+        .ok_or(anyhow::anyhow!("Missing public key in Matrixbird configuration."))?;
+
     let url = format!("{}/homeserver", mbs);
 
     let response = client
@@ -162,9 +165,20 @@ async fn query_server(
     let json_data = response.json::<Value>().await
         .map_err(|_| anyhow::anyhow!("Failed to parse matrixbird appservice response."))?;
 
-    let homeserver = json_data
-        .get("homeserver")
-        .and_then(|url| url.as_str())
+
+    let message = json_data["message"].to_string();
+
+    let signature = json_data["signature"].as_str()
+        .ok_or(anyhow::anyhow!("Missing signature in Matrixbird configuration"))?;
+
+    let valid = state.keys.verify_signature(&pub_key, &message, signature)?;
+
+    // signature is invalid, homeserver isn't valid
+    if !valid {
+        return Ok(false)
+    }
+
+    let homeserver = json_data["message"]["homeserver"].as_str()
         .ok_or(anyhow::anyhow!("Missing or invalid Matrixbird configuration"))?;
 
     let mut hs = homeserver.to_string();
@@ -186,7 +200,17 @@ pub async fn homeserver(
     State(state): State<Arc<AppState>>,
 ) -> Result<impl IntoResponse, ()> {
 
+    let payload = json!({
+        "homeserver": state.config.matrix.server_name,
+        "timestamp": chrono::Utc::now()
+    });
+
+    let payload_str = payload.to_string();
+
+    let signature = state.keys.sign_message(&payload_str);
+
     Ok(Json(json!({
-        "homeserver": state.config.matrix.server_name
+        "message": payload,
+        "signature": signature
     })))
 }
