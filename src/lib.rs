@@ -4,6 +4,7 @@ pub mod db;
 pub mod server;
 pub mod hook;
 pub mod ping;
+pub mod crypto;
 pub mod api;
 pub mod tasks;
 pub mod auth;
@@ -35,6 +36,7 @@ pub struct AppState {
     pub mail: email::MailService,
     pub email_providers: email::EmailProviders,
     pub templates: templates::EmailTemplates,
+    pub keys: crypto::Keys,
 }
 
 impl AppState {
@@ -51,12 +53,13 @@ impl AppState {
 
         let db = db::Database::new(&config).await;
 
-
         let templates = templates::EmailTemplates::new()?;
 
         let mail = email::MailService::new(&config, templates.clone());
 
         let providers = email::EmailProviders::new("data/providers.json")?;
+
+        let keys = crypto::Keys::new()?;
 
         let mode = match &config.mode {
             Some(mode) => {
@@ -82,6 +85,7 @@ impl AppState {
             mail,
             email_providers: providers,
             templates,
+            keys,
         });
 
         let cron_state = state.clone();
