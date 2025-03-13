@@ -335,15 +335,13 @@ pub async fn transactions(
                 if let Ok(room_type) = state.appservice.get_room_type(room_id.clone(), "INBOX".to_string()).await{
                     if room_type == "INBOX" {
 
-                        let localpart = sender.localpart().to_owned();
-
                         let state_clone = state.clone();
 
                         // Send welcome emails and messages
                         tokio::spawn(async move {
                             tasks::send_welcome(
                                 state_clone, 
-                                &localpart,
+                                sender,
                                 room_id,
                             ).await;
                         });

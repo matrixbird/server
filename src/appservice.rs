@@ -467,6 +467,7 @@ impl AppService {
     pub async fn send_to_inbox(
         &self, 
         room_id: OwnedRoomId, 
+        user_id: OwnedUserId,
         subject: String,
         body: String,
         relation: Option<RelatesTo>,
@@ -504,6 +505,7 @@ impl AppService {
             message_id,
             body,
             from,
+            recipients: vec![user_id.to_string()],
             subject: Some(subject),
             date,
             attachments: None,

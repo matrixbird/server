@@ -39,6 +39,8 @@ use crate::api::EmailReviewEvent;
 
 use crate::appservice::HttpClient;
 
+
+
 #[derive(Clone, Debug, Deserialize, Serialize, EventContent)]
 #[ruma_event(type = "matrixbird.email.screen", kind = State, state_key_type = String)]
 pub struct ScreenEmailsContent {
@@ -268,10 +270,22 @@ async fn build_event(
         _ => {}
     }
 
+    let local_part = match get_localpart(payload.envelope_to.clone()) {
+        Some(parts) => parts.0,
+        None => {
+            tracing::error!("Failed to get localpart from email: {:?}", payload);
+            return Err(anyhow::Error::msg("Failed to get localpart from email"));
+        }
+    };
+
+    let server_name = state.config.matrix.server_name.clone();
+    let mxid = format!("@{}:{}", local_part, server_name);
+
     let email_content = EmailContent {
         message_id: payload.message_id.clone(),
         body: email_body,
         from: payload.from.clone(),
+        recipients: vec![mxid],
         subject: payload.subject.clone(),
         date: payload.date.clone(),
         attachments: payload.attachments.clone(),
@@ -502,6 +516,8 @@ pub async fn process_failed_email(
     let server_name = state.config.matrix.server_name.clone();
     let raw_alias = format!("#{}:{}", user, server_name);
 
+    let mxid = format!("@{}:{}", user, server_name);
+
     let alias = match RoomAliasId::parse(&raw_alias) {
         Ok(alias) => alias,
         Err(e) => {
@@ -538,6 +554,7 @@ pub async fn process_failed_email(
         message_id: payload.message_id.clone(),
         body: email_body,
         from: payload.from.clone(),
+        recipients: vec![mxid],
         subject: payload.subject.clone(),
         date: payload.date.clone(),
         attachments: payload.attachments.clone(),
@@ -581,10 +598,11 @@ pub async fn process_failed_email(
 
 pub async fn send_welcome(
     state: Arc<AppState>,
-    local_part: &str,
+    sender: OwnedUserId,
     room_id: OwnedRoomId,
 ) {
 
+    let local_part = sender.localpart().to_owned();
     // send first matrix email
     if let Ok(body) = state.templates.render(
         "welcome_matrix.html",
@@ -595,6 +613,7 @@ pub async fn send_welcome(
         let subject = String::from("Welcome to Matrixbird");
         if let Ok(event_id) = state.appservice.send_to_inbox(
             room_id.clone(),
+            sender.clone(),
             subject,
             body.clone().to_string(),
             None,
@@ -671,6 +690,7 @@ pub async fn send_welcome(
         let subject = String::from("What is Matrixbird?");
         if let Ok(event_id) = state.appservice.send_to_inbox(
             room_id.clone(),
+            sender.clone(),
             subject,
             body.clone().to_string(),
             None,
@@ -729,6 +749,20 @@ pub async fn process_reply(
         }
     };
 
+    let sender = match event["sender"].as_str() {
+        Some(sender) => sender,
+        None => return
+    };
+
+    let sender = match OwnedUserId::try_from(sender) {
+        Ok(sender) => sender,
+        Err(e) => {
+            tracing::error!("Failed to parse sender: {}", e);
+            return;
+        }
+    };
+
+
     let subject = match event["content"]["subject"].as_str() {
         Some(subject) => subject.to_string(),
         //Some(subject) => format!("Re: {}", subject),
@@ -775,6 +809,7 @@ pub async fn process_reply(
 
         if let Ok(res) = state.appservice.send_to_inbox(
             room_id.clone(),
+            sender,
             subject,
             body.clone().to_string(),
             Some(relation),

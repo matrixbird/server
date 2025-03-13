@@ -37,6 +37,7 @@ pub struct EmailContent {
     pub message_id: String,
     pub body: EmailBody,
     pub from: Address,
+    pub recipients: Vec<String>,
     pub subject: Option<String>,
     pub date: DateTime<Utc>,
     #[serde(skip_serializing_if = "Option::is_none")]
