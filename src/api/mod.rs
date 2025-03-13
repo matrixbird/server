@@ -6,7 +6,7 @@ use axum::{
 };
 
 use ruma::events::room::
-    member::{RoomMemberEvent, MembershipState};
+member::{RoomMemberEvent, MembershipState};
 use ruma::OwnedRoomId;
 
 
@@ -48,13 +48,13 @@ pub struct EmailBody {
 
 /*
 fn deserialize_review_event(json: &str, user: String) -> Result<EmailReviewEvent, anyhow::Error> {
-    let event: EmailReviewEvent = serde_json::from_str(json)?;
-    if event.event_type == "matrixbird.email.review" && 
-        event.sender != user {
-        Ok(event)
-    } else {
-        Err(anyhow::anyhow!("Not an email review event"))
-    }
+let event: EmailReviewEvent = serde_json::from_str(json)?;
+if event.event_type == "matrixbird.email.review" && 
+event.sender != user {
+Ok(event)
+} else {
+Err(anyhow::anyhow!("Not an email review event"))
+}
 }
 */
 
@@ -163,15 +163,15 @@ pub async fn transactions(
         /*
         if let Some(event_type) = event["type"].as_str() {
 
-            if event_type == "matrixbird.email.review" {
-                let to = match event["content"]["to"].as_str() {
-                    Some(to) => to,
-                    None => ""
-                };
-            }
+        if event_type == "matrixbird.email.review" {
+        let to = match event["content"]["to"].as_str() {
+        Some(to) => to,
+        None => ""
+        };
+        }
 
         }
-*/
+        */
 
         // Handle outgoing emails
         if let Some(event_type) = event["type"].as_str() {
@@ -258,20 +258,23 @@ pub async fn transactions(
             if event_type.contains("matrixbird.email.reply") {
                 tracing::info!("Outgoing matrix email: {}", event_type);
 
-                let user_id = match event["content"]["to"].as_str() {
-                    Some(to) => to,
-                    None => ""
-                };
+                let recipients: Vec<String> = event["content"]["recipients"]
+                    .as_array()
+                    .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+                    .unwrap_or_default();
 
-                // Process auto-replies for @matrixbird user
-                if user_id == state.appservice.user_id() {
+                for recipient in recipients {
 
-                    let state_copy = state.clone();
-                    let event_copy = event.clone();
+                    if recipient == state.appservice.user_id() {
 
-                    tokio::spawn(async move {
-                        tasks::process_reply(state_copy, event_copy).await;
-                    });
+
+                        let state_copy = state.clone();
+                        let event_copy = event.clone();
+
+                        tokio::spawn(async move {
+                            tasks::process_reply(state_copy, event_copy).await;
+                        });
+                    }
                 }
 
 
@@ -282,29 +285,29 @@ pub async fn transactions(
         /*
         // if this is a review event, send it to the recipient's inbox
         match deserialize_review_event(&event.to_string(), state.appservice.user_id()) {
-            Ok(review_event) => {
-                info!("Review event: {:#?}", review_event);
+        Ok(review_event) => {
+        info!("Review event: {:#?}", review_event);
 
-                let review_event_copy = review_event.clone();
+        let review_event_copy = review_event.clone();
 
-                for recipient in review_event_copy.content.to {
+        for recipient in review_event_copy.content.to {
 
-                    let state_copy = state.clone();
-                    let review_event_copy = review_event.clone();
+        let state_copy = state.clone();
+        let review_event_copy = review_event.clone();
 
-                    tokio::spawn(async move {
-                        tasks::send_email_review(
-                            state_copy,
-                            review_event_copy,
-                            recipient.to_string(),
-                        ).await;
-                    });
-                }
-                
-            },
-            Err(_) => {}
+        tokio::spawn(async move {
+        tasks::send_email_review(
+        state_copy,
+        review_event_copy,
+        recipient.to_string(),
+        ).await;
+        });
         }
-    */
+
+        },
+        Err(_) => {}
+        }
+        */
 
 
 
@@ -330,28 +333,28 @@ pub async fn transactions(
             MembershipState::Invite => {
                 info!("Joining room: {}", room_id);
 
-            if let Ok(room_id) =  state.appservice.join_room(room_id.clone()).await{
+                if let Ok(room_id) =  state.appservice.join_room(room_id.clone()).await{
 
-                if let Ok(room_type) = state.appservice.get_room_type(room_id.clone(), "INBOX".to_string()).await{
-                    if room_type == "INBOX" {
+                    if let Ok(room_type) = state.appservice.get_room_type(room_id.clone(), "INBOX".to_string()).await{
+                        if room_type == "INBOX" {
 
-                        let state_clone = state.clone();
+                            let state_clone = state.clone();
 
-                        // Send welcome emails and messages
-                        tokio::spawn(async move {
-                            tasks::send_welcome(
-                                state_clone, 
-                                sender,
-                                room_id,
-                            ).await;
-                        });
+                            // Send welcome emails and messages
+                            tokio::spawn(async move {
+                                tasks::send_welcome(
+                                    state_clone, 
+                                    sender,
+                                    room_id,
+                                ).await;
+                            });
 
+                        }
                     }
-                }
 
 
 
-        };
+                };
 
 
             }
