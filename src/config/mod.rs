@@ -68,6 +68,7 @@ pub struct Matrix {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Redis {
     pub session: RedisDB,
+    pub cache: RedisDB,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

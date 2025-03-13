@@ -11,6 +11,7 @@ pub mod auth;
 pub mod middleware;
 pub mod templates;
 pub mod email;
+pub mod cache;
 pub mod session;
 pub mod domain;
 pub mod error;
@@ -32,6 +33,7 @@ pub struct AppState {
     pub proxy: ProxyClient,
     pub appservice: appservice::AppService,
     pub transaction_store: ping::TransactionStore,
+    pub cache: cache::Cache,
     pub session: session::SessionStore,
     pub mail: email::MailService,
     pub email_providers: email::EmailProviders,
@@ -46,6 +48,8 @@ impl AppState {
                 .build(HttpConnector::new());
 
         let appservice = appservice::AppService::new(&config).await?;
+
+        let cache = cache::Cache::new(&config).await?;
 
         let session = session::SessionStore::new(&config).await?;
 
@@ -81,6 +85,7 @@ impl AppState {
             proxy: client,
             appservice,
             transaction_store,
+            cache,
             session,
             mail,
             email_providers: providers,
@@ -88,9 +93,9 @@ impl AppState {
             keys,
         });
 
-        let cron_state = state.clone();
 
         /*
+        let cron_state = state.clone();
         tokio::spawn(async move {
             let mut interval = interval(Duration::from_secs(60 * 5)); 
             

@@ -4,6 +4,8 @@ use axum::{
     Json,
 };
 
+use chrono::{DateTime, Utc};
+
 use crate::utils::localhost_domain;
 
 use std::sync::Arc;
@@ -11,6 +13,8 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use serde_json::{Value, json};
+
+use serde::{Serialize, Deserialize};
 
 use crate::AppState;
 
@@ -117,6 +121,80 @@ pub async fn validate_domain(
     Json(json!({"valid": valid}))
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct WellKnown {
+    #[serde(rename = "m.homeserver")]
+    pub homeserver: Homeserver,
+    #[serde(rename = "matrixbird.server")]
+    pub matrixbird_server: MatrixbirdServer,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct Homeserver {
+    pub base_url: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct MatrixbirdServer {
+    pub url: String,
+    pub public_key: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct SignedMessage {
+    pub message: Message,
+    pub signature: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct Message {
+    pub homeserver: String,
+    pub timestamp: DateTime<Utc>,
+}
+
+async fn fetch_well_known(
+    well_known_url: String,
+) -> Result<WellKnown, anyhow::Error> {
+
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(5))
+        .connect_timeout(Duration::from_secs(3)) 
+        .build()?;
+
+    let response = client.get(&well_known_url)
+        .send()
+        .await
+        .map_err(|_| anyhow::anyhow!("Failed to query homeserver .well-known endpoint: {}", well_known_url))?;
+
+    let well_known = response.json::<WellKnown>().await
+        .map_err(|_| anyhow::anyhow!("Failed to parse homeserver .well-known response."))?;
+
+    Ok(well_known)
+}
+
+async fn ping_appservice(
+    url: &str,
+) -> Result<SignedMessage, anyhow::Error> {
+
+    let appservice_url = format!("{}/homeserver", url);
+
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(5))
+        .connect_timeout(Duration::from_secs(3)) 
+        .build()?;
+
+    let response = client.get(&appservice_url)
+        .send()
+        .await
+        .map_err(|_| anyhow::anyhow!("Failed to query appservice URL: {}", appservice_url))?;
+
+    let message = response.json::<SignedMessage>().await
+        .map_err(|_| anyhow::anyhow!("Failed to parse homeserver .well-known response."))?;
+
+    Ok(message)
+}
+
+
 async fn query_server(
     state: Arc<AppState>,
     domain: &str,
@@ -130,65 +208,54 @@ async fn query_server(
         "https"
     };
 
-    let url = format!("{}://{}/.well-known/matrix/client", protocol, domain);
+    let well_known_url = format!("{}://{}/.well-known/matrix/client", protocol, domain);
 
-    let client = reqwest::Client::builder()
-        .timeout(Duration::from_secs(5))
-        .connect_timeout(Duration::from_secs(3)) 
-        .build()?;
+    let well_known: WellKnown;
 
-    let response = client.get(&url)
-        .send()
-        .await
-        .map_err(|_| anyhow::anyhow!("Failed to query homeserver .well-known endpoint: {}", url))?;
+    if let Some(from_cache) = state.cache.get_well_known(&well_known_url).await? {
+        tracing::info!("Found cached well-known data.");
+        well_known = from_cache;
+    } else {
+        well_known = fetch_well_known(well_known_url.to_string().clone()).await?;
+    }
 
-    let json_data = response.json::<Value>().await
-        .map_err(|_| anyhow::anyhow!("Failed to parse homeserver .well-known response."))?;
+    let appservice = ping_appservice(&well_known.matrixbird_server.url).await?;
 
-    let mbs = json_data
-        .get("matrixbird.server")
-        .and_then(|server| server.get("url"))
-        .and_then(|url| url.as_str())
-        .ok_or(anyhow::anyhow!("Homeserver does not support Matrixbird."))?;
+    let message_str = serde_json::to_string(&appservice.message)?;
 
-    let pub_key = json_data["matrixbird.server"]["public_key"].as_str()
-        .ok_or(anyhow::anyhow!("Missing public key in Matrixbird configuration."))?;
-
-    let url = format!("{}/homeserver", mbs);
-
-    let response = client
-        .get(&url)
-        .send()
-        .await
-        .map_err(|_| anyhow::anyhow!("Failed to query matrixbird appservice: {}", url))?;
-
-    let json_data = response.json::<Value>().await
-        .map_err(|_| anyhow::anyhow!("Failed to parse matrixbird appservice response."))?;
-
-
-    let message = json_data["message"].to_string();
-
-    let signature = json_data["signature"].as_str()
-        .ok_or(anyhow::anyhow!("Missing signature in Matrixbird configuration"))?;
-
-    let valid = state.keys.verify_signature(&pub_key, &message, signature)?;
+    let valid = state.keys.verify_signature(&well_known.matrixbird_server.public_key, &message_str, &appservice.signature)?;
 
     // signature is invalid, homeserver isn't valid
     if !valid {
         return Ok(false)
     }
 
-    let homeserver = json_data["message"]["homeserver"].as_str()
-        .ok_or(anyhow::anyhow!("Missing or invalid Matrixbird configuration"))?;
-
-    let mut hs = homeserver.to_string();
+    let mut hs = appservice.message.homeserver.to_string();
 
     if state.development_mode() {
-        hs = localhost_domain(homeserver.to_string());
+        hs = localhost_domain(appservice.message.homeserver.to_string());
     }
 
     if hs == domain {
         tracing::info!("Domain is valid");
+
+        tokio::spawn(async move {
+            let cached = state.cache.cache_well_known(
+                &well_known_url,
+                &well_known
+            ).await;
+
+            match cached {
+                Ok(_) => {
+                    tracing::info!("Cached well-known value.");
+                },
+                Err(err) => {
+                    tracing::error!("Failed to cache well-known: {}", err);
+                }
+            }
+
+        });
+
         return Ok(true)
     }
 
