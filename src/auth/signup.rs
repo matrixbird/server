@@ -16,7 +16,7 @@ use crate::error::AppserviceError;
 use crate::tasks;
 
 use ruma::api::client::{
-    account::{register, get_username_availability},
+    account::register,
     uiaa::{Dummy, AuthData}
 };
 

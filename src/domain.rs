@@ -130,7 +130,7 @@ pub struct WellKnown {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct Homeserver {
+pub struct Homeserver {
     pub base_url: String,
 }
 

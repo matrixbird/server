@@ -1,22 +1,15 @@
 use thiserror::Error;
 use axum::{
     body::Body,
-    extract::{
-        Path, 
-        State, 
-        OriginalUri, 
-        MatchedPath
-    },
+    extract::State, 
     http::{
         Request, 
         StatusCode, 
-        Uri, 
         header::AUTHORIZATION
     },
     response::{IntoResponse, Response},
     middleware::Next,
     Json,
-    Extension
 };
 
 use ruma::api::client::account::whoami;

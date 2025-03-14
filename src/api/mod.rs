@@ -58,30 +58,6 @@ Err(anyhow::anyhow!("Not an email review event"))
 }
 */
 
-#[derive(Debug)]
-enum TransactionError {
-    InvalidInput(String),
-    DatabaseError(String),
-    EmailError(String),
-}
-
-impl TransactionError {
-    fn log(&self) {
-        match self {
-            Self::InvalidInput(msg) => warn!("Invalid input: {}", msg),
-            Self::DatabaseError(msg) => warn!("Database error: {}", msg),
-            Self::EmailError(msg) => warn!("Email error: {}", msg),
-        }
-    }
-}
-
-impl IntoResponse for TransactionError {
-    fn into_response(self) -> Response {
-        self.log();
-        (StatusCode::OK, Json(json!({}))).into_response()
-    }
-}
-
 async fn store_event_to_db(
     state: Arc<AppState>,
     event: Value,
