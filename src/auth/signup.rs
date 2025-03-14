@@ -16,10 +16,8 @@ use crate::error::AppserviceError;
 use crate::tasks;
 
 use ruma::api::client::{
-        account::register,
-        account::get_username_availability,
-        uiaa::AuthData,
-        uiaa::Dummy,
+    account::{register, get_username_availability},
+    uiaa::{Dummy, AuthData}
 };
 
 use crate::appservice::HttpClient;
@@ -32,7 +30,6 @@ pub struct SignupRequest {
     pub client_secret: String,
     pub invite_code: Option<String>,
 }
-
 
 pub async fn signup(
     State(state): State<Arc<AppState>>,
@@ -91,21 +88,9 @@ pub async fn signup(
 
     let client = ruma::Client::builder()
         .homeserver_url(state.config.matrix.homeserver.clone())
-        //.access_token(Some(config.appservice.access_token.clone()))
         .build::<HttpClient>()
-        .await.unwrap();
-
-    let av = get_username_availability::v3::Request::new(
-        payload.username.clone()
-    );
-
-    if let Err(res) = client.send_request(av).await {
-        println!("username availability response: {:?}", res);
-        return Ok(Json(json!({
-            "available": false
-        })))
-    }
-
+        .await
+        .map_err(|e| AppserviceError::HomeserverError(e.to_string()))?;
 
     let mut req = register::v3::Request::new();
 
@@ -120,10 +105,10 @@ pub async fn signup(
 
     let resp = client
         .send_request(req)
-        .await.unwrap();
+        .await
+    .map_err(|e| AppserviceError::HomeserverError(e.to_string()))?;
 
     println!("register response: {:?}", resp);
-
 
     // store user
     if let Ok(()) = state.db.create_user(
@@ -170,16 +155,19 @@ pub async fn signup(
 
     let username = payload.username.clone();
     let access_token = resp.access_token.clone();
+    let user_id = resp.user_id.clone();
     let temp_state = state.clone();
 
-    if let Ok(inbox) = tasks::build_mailbox_rooms(
-        temp_state,
-        resp.user_id.clone(),
-        access_token,
-        username,
-    ).await {
-        println!("Built mailbox rooms: {:?}", inbox);
-    }
+    tokio::spawn(async move {
+        if let Ok(inbox) = tasks::build_mailbox_rooms(
+            temp_state,
+            user_id,
+            access_token,
+            username,
+        ).await {
+            println!("Built mailbox rooms: {:?}", inbox);
+        }
+    });
 
 
     if let Some(access_token) = resp.access_token.clone() {

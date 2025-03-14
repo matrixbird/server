@@ -17,6 +17,7 @@ use ruma::{
     },
     api::client::room::create_room,
     api::client::config::set_global_account_data,
+    api::client::profile::set_display_name,
 };
 
 use serde_json::{json, Value};
@@ -66,6 +67,31 @@ pub struct EmailStateContent {
     pub state: String,
 }
 
+pub async fn set_display_name(
+    state: Arc<AppState>,
+    user_id: OwnedUserId,
+    name: String,
+    access_token: Option<String>,
+) -> Result<(), anyhow::Error> {
+
+    let client = ruma::Client::builder()
+        .homeserver_url(state.config.matrix.homeserver.clone())
+        .access_token(access_token)
+        .build::<HttpClient>()
+        .await?;
+
+    let req = set_display_name::v3::Request::new(
+        user_id,
+        Some(name),
+    );
+
+    client
+        .send_request(req)
+    .await?;
+
+    Ok(())
+}
+
 
 pub async fn build_mailbox_rooms(
     state: Arc<AppState>,
@@ -74,62 +100,55 @@ pub async fn build_mailbox_rooms(
     username: String,
 ) -> Result<(), anyhow::Error> {
 
-    tokio::spawn(async move {
+    let mut mailboxes = HashMap::new();
 
-        let mut mailboxes = HashMap::new();
-
-        let rooms = Vec::from([
-            "INBOX",
-            "DRAFTS",
-            //"SCREEN",
-            //"OUTBOX",
-            //"SELF",
-            //"TRASH",
-            //"SPAM",
-        ]);
+    let rooms = Vec::from([
+        "INBOX",
+        //"DRAFTS",
+        //"SCREEN",
+        //"OUTBOX",
+        //"SELF",
+        //"TRASH",
+        //"SPAM",
+    ]);
 
 
-        for room in rooms {
-            let state_clone = state.clone();
-            let access_token_clone = access_token.clone();
+    for room in rooms {
+        let state_clone = state.clone();
+        let access_token_clone = access_token.clone();
 
-            if let Ok(room_id) = build_user_room(
-                state_clone,
-                username.clone(),
-                access_token_clone,
-                room.to_string()
-            ).await {
-                println!("Built user {} room: {:?}", room, room_id);
-                
-                mailboxes.insert(room.to_string(), room_id);
-            }
+        if let Ok(room_id) = build_user_room(
+            state_clone,
+            username.clone(),
+            access_token_clone,
+            room.to_string()
+        ).await {
+            println!("Built user {} room: {:?}", room, room_id);
+            
+            mailboxes.insert(room.to_string(), room_id);
         }
+    }
 
-        println!("Mailboxes: {:?}", mailboxes);
+    println!("Mailboxes: {:?}", mailboxes);
 
-        let raw_event = ruma::serde::Raw::new(&mailboxes)?;
-        let raw = raw_event.cast::<AnyGlobalAccountDataEventContent>();
+    let raw_event = ruma::serde::Raw::new(&mailboxes)?;
+    let raw = raw_event.cast::<AnyGlobalAccountDataEventContent>();
 
-        let req = set_global_account_data::v3::Request::new_raw(
-            user_id,
-            GlobalAccountDataEventType::from("matrixbird.mailbox.rooms"),
-            raw
-        );
+    let req = set_global_account_data::v3::Request::new_raw(
+        user_id,
+        GlobalAccountDataEventType::from("matrixbird.mailbox.rooms"),
+        raw
+    );
 
-        let client = ruma::Client::builder()
-            .homeserver_url(state.config.matrix.homeserver.clone())
-            .access_token(access_token)
-            .build::<HttpClient>()
-            .await?;
+    let client = ruma::Client::builder()
+        .homeserver_url(state.config.matrix.homeserver.clone())
+        .access_token(access_token)
+        .build::<HttpClient>()
+        .await?;
 
-        let resp = client.send_request(req).await?;
+    let resp = client.send_request(req).await?;
 
-        tracing::info!("Mailbox rooms global account data response: {:?}", resp);
-
-        Ok::<(), Box<dyn std::error::Error + Send + Sync>>(())
-
-    });
-
+    tracing::info!("Mailbox rooms global account data response: {:?}", resp);
 
     Ok(())
 }
