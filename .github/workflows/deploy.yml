@@ -9,9 +9,18 @@ on:
 jobs:
   deploy:
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
 
     steps:
+
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Rust
+      uses: dtolnay/rust-toolchain@stable
+        
+    - name: Build 
+      run: cargo build --release
       
     - name: Setup SSH
       run: |
@@ -20,20 +29,5 @@ jobs:
         chmod 600 ~/.ssh/id_ed25519
         ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
 
-    - name: Deploy and Build on VPS
-      run: |
-       ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} <<EOF
-       cd /home/${{ secrets.VPS_USER }}/server
-       git pull
-       cargo build --release
-       rm ./matrixbird
-       cp ./target/release/matrixbird .
-       cd /home/${{ secrets.VPS_USER }}/matrixbird.net/server
-       git pull
-       rm ./matrixbird
-       cp ../../server/matrixbird .
-       cd /home/${{ secrets.VPS_USER }}/matrixbird.dev/server
-       git pull
-       rm ./matrixbird
-       cp ../../server/matrixbird .
-       EOF
+    - name: Upload binary 
+      run: scp target/release/matrixbird ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/home/${{ secrets.VPS_USER }}/server/matrixbird
