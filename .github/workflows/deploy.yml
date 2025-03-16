@@ -32,4 +32,8 @@ jobs:
        git pull
        rm ./matrixbird
        cp ../../server/matrixbird .
+       cd /home/${{ secrets.VPS_USER }}/matrixbird.dev/server
+       git pull
+       rm ./matrixbird
+       cp ../../server/matrixbird .
        EOF
