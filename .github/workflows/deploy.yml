@@ -29,5 +29,22 @@ jobs:
         chmod 600 ~/.ssh/id_ed25519
         ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
 
+    - name: Update repos & copy binary 
+      run: |
+       ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} <<EOF
+       cd /home/${{ secrets.VPS_USER }}/server
+       rm ./matrixbird
+       git pull
+       cd /home/${{ secrets.VPS_USER }}/matrixbird.net/server
+       rm ./matrixbird
+       git pull
+       cd /home/${{ secrets.VPS_USER }}/matrixbird.dev/server
+       rm ./matrixbird
+       git pull
+       EOF
+
     - name: Upload binary 
-      run: scp target/release/matrixbird ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/home/${{ secrets.VPS_USER }}/server/matrixbird
+      run: |
+        scp target/release/matrixbird ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/home/${{ secrets.VPS_USER }}/server/matrixbird
+        scp target/release/matrixbird ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/home/${{ secrets.VPS_USER }}/matrixbird.net/server/matrixbird
+        scp target/release/matrixbird ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/home/${{ secrets.VPS_USER }}/matrixbird.dev/server/matrixbird
