@@ -3,6 +3,11 @@ name: Deploy
 on:
   push:
     branches: [ "main" ]
+    paths:
+      - 'src/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'build.rs'
   pull_request:
     branches: [ "main" ]
 
