@@ -15,6 +15,7 @@ pub struct Config {
     pub email: Email,
     pub smtp: SMTP,
     pub cache_rules: CacheRules,
+    pub invite_code: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -33,7 +34,6 @@ pub struct AuthenticationFeatures {
     pub registration_enabled: bool,
     pub require_verification: bool,
     pub require_invite_code: bool,
-    pub invite_code: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

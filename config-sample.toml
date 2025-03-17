@@ -36,6 +36,7 @@ send_welcome_emails = true
 registration_enabled = true
 require_verification = false
 require_invite_code = true
+
 invite_code = ""
 
 [redis.session]
