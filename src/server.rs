@@ -113,6 +113,7 @@ impl Server {
         let base_routes = Router::new()
             .route("/hook", post(hook))
             .route("/health", get(health))
+            .route("/features", get(features))
             .route("/version", get(version))
             .route("/", get(index));
 
@@ -180,6 +181,19 @@ pub async fn health(
         "healthy": true,
         "features": state.config.features,
     })))
+}
+
+pub async fn features(
+    State(state): State<Arc<AppState>>,
+) -> Result<impl IntoResponse, ()> {
+
+    let mut features = json!({
+        "features": state.config.features,
+    });
+
+    features["features"]["email"]["outgoing"] = state.config.email.outgoing.enabled.into();
+
+    Ok(Json(json!(features)))
 }
 
 pub async fn index(

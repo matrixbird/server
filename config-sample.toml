@@ -24,10 +24,19 @@ send_welcome_emails = true
 enabled = true
 domain = "matrixbird.com"
 
-[features]
+[email.outgoing]
+enabled = true
+domain = "matrixbird.com"
+endpoint = ""
+
+[email.settings]
+send_welcome_emails = true
+
+[features.authentication]
 registration_enabled = true
 require_verification = false
 require_invite_code = true
+invite_code = ""
 
 [redis.session]
 url = "127.0.0.1:6379/0"
@@ -49,7 +58,3 @@ server = ""
 port = 587
 username = ""
 password = ""
-
-[authentication]
-invite_code = ""
-

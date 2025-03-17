@@ -680,7 +680,7 @@ pub async fn send_welcome(
     }
 
     // send welcome email 
-    if state.config.email.send_welcome_emails {
+    if state.config.email.settings.send_welcome_emails {
 
         let to = format!("{}@{}", local_part, state.config.email.incoming.domain);
 

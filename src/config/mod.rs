@@ -14,7 +14,6 @@ pub struct Config {
     pub features: Features,
     pub email: Email,
     pub smtp: SMTP,
-    pub authentication: Authentication,
     pub cache_rules: CacheRules,
 }
 
@@ -26,15 +25,22 @@ pub struct Server {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Features {
+    pub authentication: AuthenticationFeatures,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AuthenticationFeatures {
     pub registration_enabled: bool,
     pub require_verification: bool,
     pub require_invite_code: bool,
+    pub invite_code: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Email {
     pub incoming: IncomingEmail,
-    pub send_welcome_emails: bool,
+    pub outgoing: OutgoingEmail,
+    pub settings: EmailSettings,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -43,6 +49,17 @@ pub struct IncomingEmail {
     pub domain: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OutgoingEmail {
+    pub enabled: bool,
+    pub domain: String,
+    pub endpoint: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EmailSettings {
+    pub send_welcome_emails: bool,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SMTP {
@@ -93,11 +110,6 @@ pub struct CacheRules {
     pub well_known: bool,
 }
 
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Authentication {
-    pub invite_code: Option<String>,
-}
 
 fn default_pool_size() -> u32 {
     10
