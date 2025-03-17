@@ -38,6 +38,9 @@ pool_size = 20
 timeout_secs = 5
 ttl = 3600
 
+[cache_rules]
+well_known = false
+
 [smtp]
 account = ""
 server = ""

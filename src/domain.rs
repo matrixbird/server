@@ -212,12 +212,17 @@ async fn query_server(
 
     let well_known: WellKnown;
 
-    if let Some(from_cache) = state.cache.get_well_known(&well_known_url).await? {
-        tracing::info!("Found cached well-known data.");
-        well_known = from_cache;
+    if state.config.cache_rules.well_known {
+        if let Some(from_cache) = state.cache.get_well_known(&well_known_url).await? {
+            tracing::info!("Found cached well-known data.");
+            well_known = from_cache;
+        } else {
+            well_known = fetch_well_known(well_known_url.to_string().clone()).await?;
+        }
     } else {
         well_known = fetch_well_known(well_known_url.to_string().clone()).await?;
     }
+
 
     let appservice = ping_appservice(&well_known.matrixbird_server.url).await?;
 
@@ -239,22 +244,24 @@ async fn query_server(
     if hs == domain {
         tracing::info!("Domain is valid");
 
-        tokio::spawn(async move {
-            let cached = state.cache.cache_well_known(
-                &well_known_url,
-                &well_known
-            ).await;
+        if state.config.cache_rules.well_known {
+            tokio::spawn(async move {
+                let cached = state.cache.cache_well_known(
+                    &well_known_url,
+                    &well_known
+                ).await;
 
-            match cached {
-                Ok(_) => {
-                    tracing::info!("Cached well-known value.");
-                },
-                Err(err) => {
-                    tracing::error!("Failed to cache well-known: {}", err);
+                match cached {
+                    Ok(_) => {
+                        tracing::info!("Cached well-known value.");
+                    },
+                    Err(err) => {
+                        tracing::error!("Failed to cache well-known: {}", err);
+                    }
                 }
-            }
 
-        });
+            });
+        }
 
         return Ok(true)
     }

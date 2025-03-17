@@ -15,6 +15,7 @@ pub struct Config {
     pub email: Email,
     pub smtp: SMTP,
     pub authentication: Authentication,
+    pub cache_rules: CacheRules,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -80,6 +81,12 @@ pub struct RedisDB {
     pub timeout_secs: u64,
     pub ttl: Option<u64>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CacheRules {
+    pub well_known: bool,
+}
+
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Authentication {
