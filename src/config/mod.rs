@@ -5,7 +5,7 @@ use std::path::Path;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
-    pub mode: Option<String>,
+    pub general: General,
     pub server: Server,
     pub db: DB,
     pub appservice: AppService,
@@ -15,6 +15,11 @@ pub struct Config {
     pub email: Email,
     pub smtp: SMTP,
     pub cache_rules: CacheRules,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct General {
+    pub mode: Option<String>,
     pub invite_code: Option<String>,
 }
 

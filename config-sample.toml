@@ -1,4 +1,6 @@
+[general]
 mode = "development"
+invite_code = ""
 
 [server]
 port = 8989
@@ -36,8 +38,6 @@ send_welcome_emails = true
 registration_enabled = true
 require_verification = false
 require_invite_code = true
-
-invite_code = ""
 
 [redis.session]
 url = "127.0.0.1:6379/0"

@@ -64,7 +64,7 @@ impl AppState {
 
         let keys = crypto::Keys::new(&config)?;
 
-        let mode = match &config.mode {
+        let mode = match &config.general.mode {
             Some(mode) => {
                 if mode == "development" {
                     "development".to_string()

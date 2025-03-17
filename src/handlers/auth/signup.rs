@@ -53,7 +53,7 @@ pub async fn signup(
                 ).await{
                     println!("Email is: {}", email);
                     invite_email = Some(email);
-                } else if code == state.config.invite_code.clone().unwrap_or("".to_string()) {
+                } else if code == state.config.general.invite_code.clone().unwrap_or("".to_string()) {
                     tracing::info!("Using default invite code");
                 } else {
                     println!("Invite code not found");
