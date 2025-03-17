@@ -18,9 +18,11 @@ homeserver = "http://localhost:8080"
 server_name = "localhost:8480"
 
 [email]
+send_welcome_emails = true
+
+[email.incoming]
 enabled = true
 domain = "matrixbird.com"
-send_welcome_emails = true
 
 [features]
 registration_enabled = true

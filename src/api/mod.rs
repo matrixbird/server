@@ -179,7 +179,7 @@ pub async fn transactions(
 
                 if state.development_mode() {
                     //replace domain part
-                    let replaced = replace_email_domain(&from, state.config.email.domain.as_str());
+                    let replaced = replace_email_domain(&from, state.config.email.incoming.domain.as_str());
 
                     from = replaced;
                 }
