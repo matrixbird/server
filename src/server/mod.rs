@@ -1,5 +1,7 @@
+pub mod middleware;
+
 use axum::{
-    middleware::{self},
+    middleware::{self as axum_middleware},
     routing::{get, put, post},
     http::HeaderValue,
     extract::{Request, State},
@@ -24,12 +26,12 @@ use http::header::CONTENT_TYPE;
 use anyhow;
 
 use crate::config::Config;
-use crate::middleware::authenticate_homeserver;
+use middleware::authenticate_homeserver;
 
-use crate::ping::ping;
+use crate::handlers::ping::ping;
 use crate::hook::hook;
 
-use crate::auth::{
+use crate::handlers::auth::{
     login, 
     signup, 
     verify_email, 
@@ -90,7 +92,7 @@ impl Server {
         let service_routes = Router::new()
             .route("/ping", post(ping))
             .route("/transactions/:txn_id", put(transactions))
-            .route_layer(middleware::from_fn_with_state(self.state.clone(), authenticate_homeserver));
+            .route_layer(axum_middleware::from_fn_with_state(self.state.clone(), authenticate_homeserver));
 
         let auth_routes = Router::new()
             .route("/login", post(login))
