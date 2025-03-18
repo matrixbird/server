@@ -31,7 +31,7 @@ Run the appservice once with:
 $ ./target/release/matrixbird
 ```
 
-The appservice will create a keypair with the `matrix.server_name` field in your `config.toml`. These keys are necessary for verifying the homeserver, and talking to remote matrixbird appservices. The public key needs to be returned in the homeserver's `.well-known/matrix/client` endpoint, along with the appservice's URL, like so:
+The URL of the appservice needs to be returned in the homeserver's `.well-known/matrix/client` endpoint, like so:
 
 ```json
 {
@@ -39,8 +39,7 @@ The appservice will create a keypair with the `matrix.server_name` field in your
     "base_url": "https://matrix.example.com"
   },
   "matrixbird.server": {
-    "url": "https://appservice.example.com",
-    "public_key": "your-public-key-here"
+    "url": "https://appservice.example.com"
   }
 }
 ```

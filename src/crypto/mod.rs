@@ -4,32 +4,41 @@ use std::fs::{File, OpenOptions};
 use std::io::{Read, Write};
 use base64::prelude::*;
 
+use axum::{
+    extract::State,
+    response::IntoResponse,
+    Json,
+};
+use serde_json::json;
+
 use crate::config::Config;
+use crate::AppState;
+use std::sync::Arc;
 
 #[derive(Clone, Debug)]
 pub struct Keys {
     pub signing_key: SigningKey,
     pub verifying_key: VerifyingKey,
+    pub verify_key_base64: String,
 }
 
 impl Keys {
     pub fn new(config: &Config) -> Result<Self, anyhow::Error> {
 
-        let private_key_path = format!("{}.private.key", config.matrix.server_name);
-        let public_key_path = format!("{}.public.key", config.matrix.server_name);
+        let signing_key_path = format!("{}.signing.key", config.matrix.server_name);
+        //let verify_key_path = format!("{}.verify.key", config.matrix.server_name);
 
-        if !std::path::Path::new(&public_key_path).exists() || 
-        !std::path::Path::new(&private_key_path).exists() {
-            generate_keys(&private_key_path, &public_key_path)
-                .expect("Could not generate keypair.");
+        if !std::path::Path::new(&signing_key_path).exists() {
+            generate_keys(&signing_key_path)
+                .expect("Could not generate signing key.");
         }
 
-        let keys = read_keys(&private_key_path, &public_key_path);
+        let keys = read_keys(&signing_key_path);
 
         match keys {
             Ok(keys) => Ok(keys),
             Err(e) => {
-                anyhow::bail!("Could not read keys: {}", e);
+                anyhow::bail!("Could not read signing key: {}", e);
             }
         }
     }
@@ -42,9 +51,9 @@ impl Keys {
     pub fn verify_signature(&self, verifying_key: &str, message: &str, signature: &str) -> Result<bool, anyhow::Error> {
 
         let verifying_key_bytes = BASE64_STANDARD.decode(verifying_key.trim())
-            .map_err(|e| anyhow::anyhow!("Could not decode public key. {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Could not decode signing key. {}", e))?;
         let bon = <[u8; 32]>::try_from(verifying_key_bytes)
-            .map_err(|_| anyhow::anyhow!("Could not convert public key bytes."))?;
+            .map_err(|_| anyhow::anyhow!("Could not convert signing key bytes."))?;
 
         let verifying_key = VerifyingKey::from_bytes(&bon)
             .map_err(|e| anyhow::anyhow!("Could not create verifying key. {}", e))?;
@@ -61,58 +70,59 @@ impl Keys {
 
 }
 
-pub fn generate_keys(private_key_path: &str, public_key_path: &str) -> Result<(), anyhow::Error> {
+pub fn generate_keys(signing_key_path: &str) -> Result<(), anyhow::Error> {
     let mut csprng = OsRng;
     let signing_key = SigningKey::generate(&mut csprng);
-    let verifying_key = signing_key.verifying_key();
+    //let verifying_key = signing_key.verifying_key();
 
-    let private_key_base64 = BASE64_STANDARD.encode(signing_key.to_bytes());
+    let signing_key_base64 = BASE64_STANDARD.encode(signing_key.to_bytes());
 
-    let public_key_base64 = BASE64_STANDARD.encode(verifying_key.to_bytes());
+    //let verify_key_base64 = BASE64_STANDARD.encode(verifying_key.to_bytes());
 
-    let mut private_file = File::create(private_key_path)?;
-    private_file.write_all(private_key_base64.as_bytes())?;
+    let mut signing_key_file = File::create(signing_key_path)?;
+    signing_key_file.write_all(signing_key_base64.as_bytes())?;
 
-    let mut public_file = File::create(public_key_path)?;
-    public_file.write_all(public_key_base64.as_bytes())?;
+    //let mut verify_key_file = File::create(verify_key_path)?;
+    //verify_key_file.write_all(verify_key_base64.as_bytes())?;
 
-    tracing::info!("Keypair generated and saved!");
-    tracing::info!("Private key stored '{}'", private_key_path);
-    tracing::info!("Public key stored '{}'", public_key_path);
+    tracing::info!("Keypair generated and saved.");
+    tracing::info!("Signing key stored '{}'", signing_key_path);
+    //tracing::info!("Verify key stored '{}'", verify_key_path);
 
     Ok(())
 }
 
-pub fn read_keys(private_key_path: &str, public_key_path: &str) -> Result<Keys, anyhow::Error> {
+pub fn read_keys(signing_key_path: &str) -> Result<Keys, anyhow::Error> {
 
-    let mut private_key_base64 = String::new();
+    let mut signing_key_base64 = String::new();
 
     OpenOptions::new()
         .read(true)
-        .open(private_key_path)?
-        .read_to_string(&mut private_key_base64)
-        .expect("Could not read private key.");
+        .open(signing_key_path)?
+        .read_to_string(&mut signing_key_base64)
+        .expect("Could not read signing key.");
 
-    let private_key_bytes = BASE64_STANDARD.decode(private_key_base64.trim())?;
-    let signing_key = SigningKey::from_bytes(&private_key_bytes.try_into()
+    let signing_key_bytes = BASE64_STANDARD.decode(signing_key_base64.trim())?;
+    let signing_key = SigningKey::from_bytes(&signing_key_bytes.try_into()
         .unwrap());
 
-    let mut public_key_base64 = String::new();
+    let verifying_key = signing_key.verifying_key();
 
-    OpenOptions::new()
-        .read(true)
-        .open(public_key_path)?
-        .read_to_string(&mut public_key_base64)
-        .expect("Could not read public key.");
-
-    let public_key_bytes = BASE64_STANDARD.decode(public_key_base64.trim())?;
-
-    let verifying_key = VerifyingKey::from_bytes(&public_key_bytes.try_into()
-        .unwrap())?;
+    let verify_key_base64 = BASE64_STANDARD.encode(verifying_key.to_bytes());
 
     Ok(Keys {
         signing_key,
         verifying_key,
+        verify_key_base64,
     })
 }
 
+pub async fn verify_key(
+    State(state): State<Arc<AppState>>,
+) -> Result<impl IntoResponse, ()> {
+
+    Ok(Json(json!({
+        "homeserver": state.config.matrix.server_name,
+        "verify_key": state.keys.verify_key_base64,
+    })))
+}

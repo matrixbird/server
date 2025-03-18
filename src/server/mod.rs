@@ -53,6 +53,8 @@ use crate::domain::{
     homeserver
 };
 
+use crate::crypto::verify_key;
+
 use crate::api::transactions;
 
 pub struct Server{
@@ -121,6 +123,7 @@ impl Server {
             .route("/health", get(health))
             .route("/features", get(features))
             .route("/features/authentication", get(authentication_features))
+            .route("/key", get(verify_key))
             .route("/version", get(version))
             .route("/", get(index));
 

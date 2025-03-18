@@ -137,7 +137,6 @@ pub struct Homeserver {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct MatrixbirdServer {
     pub url: String,
-    pub public_key: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -194,6 +193,34 @@ async fn ping_appservice(
     Ok(message)
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+struct AppserviceKey {
+    pub homeserver: String,
+    pub verify_key: String,
+}
+
+async fn get_appservice_key(
+    url: &str,
+) -> Result<AppserviceKey, anyhow::Error> {
+
+    let appservice_url = format!("{}/key", url);
+
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(5))
+        .connect_timeout(Duration::from_secs(3)) 
+        .build()?;
+
+    let response = client.get(&appservice_url)
+        .send()
+        .await
+        .map_err(|_| anyhow::anyhow!("Failed to query appservice URL: {}", appservice_url))?;
+
+    let key = response.json::<AppserviceKey>().await
+        .map_err(|_| anyhow::anyhow!("Failed to parse appservice key response."))?;
+
+    Ok(key)
+}
+
 
 async fn query_server(
     state: Arc<AppState>,
@@ -223,12 +250,13 @@ async fn query_server(
         well_known = fetch_well_known(well_known_url.to_string().clone()).await?;
     }
 
+    let key = get_appservice_key(&well_known.matrixbird_server.url).await?;
 
     let appservice = ping_appservice(&well_known.matrixbird_server.url).await?;
 
     let message_str = serde_json::to_string(&appservice.message)?;
 
-    let valid = state.keys.verify_signature(&well_known.matrixbird_server.public_key, &message_str, &appservice.signature)?;
+    let valid = state.keys.verify_signature(&key.verify_key, &message_str, &appservice.signature)?;
 
     // signature is invalid, homeserver isn't valid
     if !valid {
