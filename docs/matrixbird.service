@@ -1,0 +1,15 @@
+[Unit]
+Description=Matrixbird Server
+
+After=synapse.service
+
+[Service]
+Type=simple
+WorkingDirectory=/home/user/server
+ExecStart=/home/user/server/matrixbird
+
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

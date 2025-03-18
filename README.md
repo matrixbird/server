@@ -6,15 +6,20 @@ overview of the project.
 
 #### Roadmap
 
+- [x] Route incoming standard email to inbox rooms
+- [x] Outgoing standard email
+- [x] Verifying remote matrixbird-supported homeservers for federation
 - [ ] Sync endpoint for efficient mailbox retrieval
-- [ ] E2EE support
-- [ ] JMAP layer 
+- [ ] End-to-end encryption
+- [ ] Possible IMAP/JMAP/standard layer for use with normal clients
 
 #### Running
 
-Keep in mind that this codebase is still experimental, and is not yet ready for production use. Run it locally for development, or with a new matrix homeserver for testing.
+> [!WARNING]  
+> This codebase is experimental, and is not yet ready for use. Run it locally for development, or live with a new matrix homeserver for testing.
 
-Before running this appservice, clone the repository and build the appservice with:
+
+Before running this appservice, clone the repository and build it:
 
 ```bash
 $ git clone https://github.com/matrixbird/server.git
@@ -24,7 +29,7 @@ $ cargo build --release
 
 Copy the `config.sample.toml` file to `config.toml` and fill in the necessary fields - pointing to your matrix homeserver etc.
 
-The appservice requires a database to store incoming email data, and transaction events from the matrix homeserver. You'll need the [sqlx-cli](https://github.com/launchbadge/sqlx/blob/main/sqlx-cli/README.md) dependency to setup the database. 
+The appservice requires a postgres database to store incoming emails, and transaction events from the matrix homeserver. You'll need the [sqlx-cli](https://github.com/launchbadge/sqlx/blob/main/sqlx-cli/README.md) dependency to setup the database. 
 
 After installing `slqx-cli`:
 
@@ -55,7 +60,7 @@ The URL of the appservice needs to be returned in the homeserver's `.well-known/
 }
 ```
 
-The appservice needs to be registered with the homeserver. Refer to Synapse for more information on how to do this. Here is a sample registration file:
+The appservice needs to be registered with the homeserver. Refer to Synapse [documentation](https://element-hq.github.io/synapse/latest/application_services.html) for more information on how to do this. Here is a sample registration file:
 
 ```yaml
 id: "matrixbird"
@@ -77,4 +82,4 @@ Finally, run the appservice with systemd (or similar), and put it behind a rever
 
 ### Discuss
 
-Join the discussion on [Matrix](https://matrix.to/#/#matrixbird:matrix.org).
+To discuss this project, join the [#matrixbird:matrix.org](https://matrix.to/#/#matrixbird:matrix.org) room.

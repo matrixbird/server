@@ -1,3 +1,10 @@
+{% extends "base_standard_email.html" %}
+
+{% block content %}
+
 <h1>Welcome to Matrixbird{% if user %} {{ user }}!{% endif %}</h1>
 
 <p>This is a modern matrix email sent over the matrix protocol.</p>
+
+{% endblock %}
+
