@@ -1,9 +1,20 @@
 ### Matrixbird appservice
 
-This appservice powers the backend email integration for [Matrixbird](https://github.com/matrixbird/matrixbird). 
+This appservice powers the backend for [Matrixbird](https://matrixbird.com). 
+See the [Matrixbird](https://github.com/matrixbird/matrixbird) page for an
+overview of the project.
 
+#### Roadmap
 
-Before running it, clone the repository and build the appservice with:
+- [ ] Sync endpoint for efficient mailbox retrieval
+- [ ] E2EE support
+- [ ] JMAP layer 
+
+#### Running
+
+Keep in mind that this codebase is still experimental, and is not yet ready for production use. Run it locally for development, or with a new matrix homeserver for testing.
+
+Before running this appservice, clone the repository and build the appservice with:
 
 ```bash
 $ git clone https://github.com/matrixbird/server.git
@@ -62,8 +73,7 @@ namespaces:
       regex: ".*"
 ```
 
-Finally, run the appservice with systemd, and put it behind a reverse proxy.
-
+Finally, run the appservice with systemd (or similar), and put it behind a reverse proxy. 
 
 ### Discuss
 

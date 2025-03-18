@@ -37,7 +37,7 @@ jobs:
     - name: Update repos & copy binary 
       run: |
        ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} <<EOF
-       cd /home/${{ secrets.VPS_USER }}/server
+       cd /home/${{ secrets.VPS_USER }}/matrixbird.com/server
        rm ./matrixbird
        git pull
        cd /home/${{ secrets.VPS_USER }}/matrixbird.net/server
@@ -50,6 +50,6 @@ jobs:
 
     - name: Upload binary 
       run: |
-        scp target/release/matrixbird ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/home/${{ secrets.VPS_USER }}/server/matrixbird
+        scp target/release/matrixbird ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/home/${{ secrets.VPS_USER }}/matrixbird.com/server/matrixbird
         scp target/release/matrixbird ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/home/${{ secrets.VPS_USER }}/matrixbird.net/server/matrixbird
         scp target/release/matrixbird ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/home/${{ secrets.VPS_USER }}/matrixbird.dev/server/matrixbird
