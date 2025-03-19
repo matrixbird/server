@@ -1839,6 +1839,7 @@ dependencies = [
  "http",
  "hyper",
  "hyper-util",
+ "js_int",
  "lettre",
  "log",
  "mailchecker",
