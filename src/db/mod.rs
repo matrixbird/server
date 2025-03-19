@@ -1,24 +1,32 @@
+mod users;
+mod emails;
+mod events;
+mod invites;
+mod access_tokens;
+
 use sqlx::postgres::{PgPool, PgPoolOptions, PgConnectOptions};
 use sqlx::ConnectOptions;
 use sqlx::Row;
 use std::process;
 
-use serde_json::Value;
-
-
 use crate::config::Config;
+
+
+pub use users::UserQueries;
+pub use emails::{EmailQueries, UnprocessedEmail};
+pub use events::EventQueries;
+pub use access_tokens::AccessTokenQueries;
+pub use invites::InviteQueries;
+
 
 #[derive(Clone)]
 pub struct Database {
     pub pool: PgPool,
-}
-
-#[derive(Debug, Clone)]
-#[derive(sqlx::FromRow)]
-pub struct UnprocessedEmail { 
-    pub message_id: String, 
-    pub envelope_to: String,
-    pub email_json: Value
+    pub users: UserQueries,
+    pub emails: EmailQueries,
+    pub events: EventQueries,
+    pub access_tokens: AccessTokenQueries,
+    pub invites: InviteQueries,
 }
 
 impl Database {
@@ -58,185 +66,14 @@ impl Database {
         }
 
         Self {
-            pool,
+            pool: pool.clone(),
+            users: UserQueries::new(pool.clone()),
+            emails: EmailQueries::new(pool.clone()),
+            events: EventQueries::new(pool.clone()),
+            access_tokens: AccessTokenQueries::new(pool.clone()),
+            invites: InviteQueries::new(pool.clone()),
         }
 
-    }
-
-    pub async fn store_email_data(
-        &self, 
-        message_id: &str, 
-        envelope_from: &str, 
-        envelope_to: &str,
-        email_json: Value,
-    ) 
-    -> Result<(), sqlx::Error> {
-
-        sqlx::query("INSERT INTO emails (message_id, envelope_from, envelope_to, email_json) VALUES ($1, $2, $3, $4)")
-            .bind(message_id)
-            .bind(envelope_from)
-            .bind(envelope_to)
-            .bind(email_json)
-            .execute(&self.pool)
-            .await?;
-        Ok(())
-    }
-
-    pub async fn set_email_processed(&self, message_id: &str, event_id: String) -> Result<(), anyhow::Error> {
-
-        let now = sqlx::types::time::OffsetDateTime::now_utc();
-
-        sqlx::query("UPDATE emails SET processed = true, processed_at = $1, event_id = $2 WHERE message_id = $3;")
-            .bind(now)
-            .bind(event_id)
-            .bind(message_id)
-            .execute(&self.pool)
-            .await?;
-
-        Ok(())
-    }
-
-    pub async fn get_unprocessed_emails(&self) -> Result<Vec<UnprocessedEmail>, anyhow::Error> {
-
-        let emails = sqlx::query_as::<_, UnprocessedEmail>("SELECT message_id, envelope_to, email_json FROM emails WHERE processed = false ORDER BY created_at ASC;")
-            .fetch_all(&self.pool)
-            .await?;
-
-        Ok(emails)
-    }
-
-    pub async fn add_invite(&self, email: &str, code: &str) -> Result<(), anyhow::Error> {
-
-        sqlx::query("INSERT INTO invites (email, code) VALUES ($1, $2);")
-            .bind(email)
-            .bind(code)
-            .execute(&self.pool)
-            .await?;
-
-        Ok(())
-    }
-
-    pub async fn get_invite_code_email(&self, code: &str) -> Result<Option<String>, anyhow::Error> {
-
-        let row = sqlx::query("SELECT email FROM invites WHERE code = $1 and activated = false and invite_sent = true;")
-            .bind(code)
-            .fetch_one(&self.pool)
-            .await?;
-
-        Ok(row.try_get("email").ok())
-    }
-
-    pub async fn activate_invite_code(&self, email: &str, code: &str) -> Result<(), anyhow::Error> {
-
-        let now = sqlx::types::time::OffsetDateTime::now_utc();
-
-        println!("Activating invite code: {} for email: {}", code, email);
-
-        sqlx::query("UPDATE invites SET activated = true, activated_at = $1 WHERE email = $2 and code = $3;")
-            .bind(now)
-            .bind(email)
-            .bind(code)
-            .execute(&self.pool)
-            .await?;
-
-        Ok(())
-    }
-
-}
-
-impl Database {
-
-    pub async fn email_exists(&self, email: &str) -> Result<bool, anyhow::Error>{
-        let row = sqlx::query("SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)")
-            .bind(email)
-            .fetch_one(&self.pool)
-            .await?;
-
-        let exists: bool = row.get(0);
-        Ok(exists)
-    }
-
-    pub async fn user_exists(&self, user_id: &str) -> Result<bool, anyhow::Error>{
-        let row = sqlx::query("SELECT EXISTS(SELECT 1 FROM users WHERE user_id = $1 and active = true)")
-            .bind(user_id)
-            .fetch_one(&self.pool)
-            .await?;
-
-        let exists: bool = row.get(0);
-        Ok(exists)
-    }
-
-    pub async fn create_user(&self, user_id: &str, local_part: &str) -> Result<(), anyhow::Error> {
-
-        sqlx::query("INSERT INTO users (user_id, local_part) VALUES ($1, $2);")
-            .bind(user_id)
-            .bind(local_part)
-            .execute(&self.pool)
-            .await?;
-
-        Ok(())
-    }
-
-
-    pub async fn add_email(&self, user_id: &str, email: &str) -> Result<(), anyhow::Error> {
-
-        sqlx::query("UPDATE iusers SET email = $1 WHERE user_id = $2;")
-            .bind(email)
-            .bind(user_id)
-            .execute(&self.pool)
-            .await?;
-        Ok(())
-    }
-
-    pub async fn get_user_id_from_email(&self, email: &str) -> Result<Option<String>, anyhow::Error> {
-
-        let row = sqlx::query("SELECT user_id FROM users WHERE email = $1;")
-            .bind(email)
-            .fetch_one(&self.pool)
-            .await?;
-
-        Ok(row.try_get("user_id").ok())
-    }
-
-    pub async fn get_email_from_user_id(&self, user_id: &str) -> Result<Option<String>, anyhow::Error> {
-
-        let row = sqlx::query("SELECT email FROM users WHERE user_id = $1;")
-            .bind(user_id)
-            .fetch_one(&self.pool)
-            .await?;
-
-        Ok(row.try_get("address").ok())
-    }
-
-    pub async fn store_event(
-        &self, 
-        event_id: &str, 
-        room_id: &str, 
-        event_type: &str, 
-        sender: &str,
-        event_json: Value,
-        recipients: Option<Vec<&str>>,
-        relates_to_event_id: Option<&str>,
-        in_reply_to: Option<&str>,
-        rel_type: Option<&str>,
-        message_id: Option<&str>,
-    ) 
-    -> Result<(), sqlx::Error> {
-
-        sqlx::query("INSERT INTO events (event_id, room_id, type, sender, recipients, relates_to_event_id, in_reply_to, rel_type, message_id, json) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)")
-            .bind(event_id)
-            .bind(room_id)
-            .bind(event_type)
-            .bind(sender)
-            .bind(recipients)
-            .bind(relates_to_event_id)
-            .bind(in_reply_to)
-            .bind(rel_type)
-            .bind(message_id)
-            .bind(event_json)
-            .execute(&self.pool)
-            .await?;
-        Ok(())
     }
 
 }
