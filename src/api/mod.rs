@@ -89,7 +89,7 @@ async fn store_event_to_db(
 
     match (event_id, room_id, sender, event_type) {
         (Some(event_id), Some(room_id), Some(sender), Some(event_type)) => {
-            if let Err(e) =  state.db.store_event(
+            if let Err(e) =  state.db.events.store(
                 event_id,
                 room_id,
                 event_type,

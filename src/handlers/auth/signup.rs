@@ -48,7 +48,7 @@ pub async fn signup(
 
                 println!("Invite code: {}", code);
 
-                if let Ok(Some(email)) = state.db.get_invite_code_email(
+                if let Ok(Some(email)) = state.db.invites.get_email(
                     &code
                 ).await{
                     println!("Email is: {}", email);
@@ -111,19 +111,31 @@ pub async fn signup(
     println!("register response: {:?}", resp);
 
     // store user
-    if let Ok(()) = state.db.create_user(
+    if let Ok(()) = state.db.users.create(
         resp.user_id.clone().as_str(),
         payload.username.clone().as_str()
     ).await{
         println!("created user");
     }
 
+    // store access_token
+    match resp.access_token.clone() {
+        Some(token) => {
+            if let Ok(()) = state.db.access_tokens.add(
+                resp.user_id.clone().as_str(),
+                token.clone().as_str()
+            ).await{
+                tracing::info!("Stored access token.");
+            }
+        },
+        None => {}
+    }
 
     if let Ok(Some(request)) = state.session.get_code_session(
         payload.session.clone(),
     ).await {
 
-        if let Ok(()) = state.db.add_email(
+        if let Ok(()) = state.db.users.add_email(
             resp.user_id.clone().as_str(),
             request.email.clone().as_str()
         ).await{
@@ -134,13 +146,13 @@ pub async fn signup(
 
     match invite_email {
         Some(email) => {
-            if let Ok(()) = state.db.add_email(
+            if let Ok(()) = state.db.users.add_email(
                 resp.user_id.clone().as_str(),
                 &email
             ).await{
                 println!("Added email to user");
 
-                if let Err(_) = state.db.activate_invite_code(
+                if let Err(_) = state.db.invites.activate(
                     &email,
                     &payload.invite_code.clone().unwrap()
                 ).await{

@@ -338,7 +338,7 @@ pub async fn process_email(
 
     let store_result = match serde_json::to_value(payload) {
         Ok(email_json) => {
-            state.db.store_email_data(
+            state.db.emails.store(
                 payload.message_id.as_str(),
                 payload.envelope_from.as_str(),
                 payload.envelope_to.as_str(),
@@ -489,7 +489,7 @@ pub async fn process_email(
     }
 
 
-    if let Err(e) = state.db.set_email_processed(&payload.message_id, ev_id).await {
+    if let Err(e) = state.db.emails.set_processed(&payload.message_id, ev_id).await {
         tracing::error!("Failed to mark email as processed: {}", e);
         return;
     }
@@ -499,7 +499,7 @@ pub async fn process_email(
 
 pub async fn process_failed_emails(state: Arc<AppState>) {
 
-    if let Ok(emails) = state.db.get_unprocessed_emails().await {
+    if let Ok(emails) = state.db.emails.get_unprocessed().await {
         for email in emails {
 
             let (user, _) = match get_localpart(email.envelope_to.clone()) {
@@ -613,7 +613,7 @@ pub async fn process_failed_email(
 
 
 
-    if let Err(e) = state.db.set_email_processed(&payload.message_id, ev_id).await {
+    if let Err(e) = state.db.emails.set_processed(&payload.message_id, ev_id).await {
         tracing::error!("Failed to mark email as processed: {}", e);
         return;
     }

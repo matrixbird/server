@@ -77,6 +77,15 @@ pub async fn login(
 
     println!("Login response: {:?}", resp);
 
+    // Store access token
+    if let Ok(()) = state.db.access_tokens.add(
+        resp.user_id.clone().as_str(),
+        resp.access_token.clone().as_str()
+    ).await{
+        tracing::info!("Stored access token.");
+    }
+
+
     if let Ok((id, session)) = state.session.create_session(
         resp.user_id.to_string(),
         resp.access_token,

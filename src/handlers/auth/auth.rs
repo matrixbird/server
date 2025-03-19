@@ -74,7 +74,7 @@ pub async fn verify_email(
 
     println!("email request: {:?}", payload);
 
-    if let Ok(exists) = state.db.email_exists(
+    if let Ok(exists) = state.db.users.email_exists(
         payload.email.clone().as_str()
     ).await{
         if exists {
@@ -283,7 +283,7 @@ pub async fn request_invite(
         ).await;
 
         if !reject {
-            if let Ok(()) = state.db.add_invite(
+            if let Ok(()) = state.db.invites.add(
                 email.clone().as_str(),
                 generate_invite_code().as_str()
             ).await{
@@ -306,7 +306,7 @@ pub async fn validate_invite_code(
 
     println!("Validating invite code: {}", code);
 
-    if let Ok(Some(email)) = state.db.get_invite_code_email(
+    if let Ok(Some(email)) = state.db.invites.get_email(
         &code
     ).await{
         println!("Email is: {}", email);
