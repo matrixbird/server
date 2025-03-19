@@ -126,7 +126,7 @@ pub async fn transactions(
 
     for event in events {
         //println!("Event: {:#?}", event);
-        tracing::info!("Event: {:#?}", event);
+        //tracing::info!("Event: {:#?}", event);
 
         let state_copy = state.clone();
         let event_copy = event.clone();
@@ -293,20 +293,37 @@ pub async fn transactions(
             continue;
         };
 
+        tracing::info!("Member event: {:#?}", member_event);
+
 
         let room_id = member_event.room_id().to_owned();
         let membership = member_event.membership().to_owned();
         let sender = member_event.sender().to_owned();
 
 
-        let invited_user = member_event.state_key().to_owned();
-        if invited_user != state.appservice.user_id() {
-            info!("Ignoring event for user: {}", invited_user);
-            continue;
-        }
-
         match membership {
             MembershipState::Invite => {
+
+                // Auto-join rooms with user's access token
+                let invited_user = member_event.state_key().to_owned();
+                if invited_user != state.appservice.user_id() {
+                    info!("Auto-joining room on behalf of user: {}", invited_user);
+                    /*
+                    let state_clone = state.clone();
+
+                    tokio::spawn(async move {
+                        let _ = tasks::user::join_room(
+                            state_clone, 
+                            invited_user,
+                            room_id,
+                        ).await;
+                    });
+                    */
+
+
+                    continue;
+                }
+
                 info!("Joining room: {}", room_id);
 
                 if let Ok(room_id) =  state.appservice.join_room(room_id.clone()).await{

@@ -1,3 +1,5 @@
+pub mod user;
+
 use std::sync::Arc;
 use tokio::time::{sleep, Duration};
 use std::collections::HashMap;

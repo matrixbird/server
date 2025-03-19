@@ -10,7 +10,6 @@ pub fn hash_password(password: &str) -> Result<String, bcrypt::BcryptError> {
     hash(password.as_bytes(), 10)
 }
 
-
 pub fn generate_magic_code() -> String {
     let mut rng = rand::rng();
     format!("{:06}", rng.random_range(0..1_000_000))
@@ -76,6 +75,21 @@ pub fn room_id_valid(room_id: &str, server_name: &str) -> Result<OwnedRoomId, St
         Err(err) => Err(format!("Failed to parse Room ID: {}", err)),
     }
 }
+
+pub fn is_local_room(
+    room_id: &OwnedRoomId, 
+    server_name: &str
+) -> bool {
+
+    let domain = room_id.server_name();
+
+    match domain {
+        Some(domain) => domain == server_name,
+        None => false
+    }
+
+}
+
 
 static SLUG_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"[^a-zA-Z0-9]+").unwrap());
 
