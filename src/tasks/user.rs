@@ -1,5 +1,6 @@
 use std::sync::Arc;
 use crate::AppState;
+
 use tokio::time::{sleep, Duration};
 
 use js_int::UInt;
@@ -14,11 +15,13 @@ use ruma::{
     api::Direction,
     api::client::{
         profile::set_display_name,
-        membership::join_room_by_id,
+        membership::{join_room_by_id, joined_rooms},
         state::get_state_events,
         message::get_message_events,
         threads::get_threads,
-        filter::RoomEventFilter,
+        filter::{RoomFilter, RoomEventFilter, FilterDefinition},
+        sync::sync_events::v3::Filter,
+        sync::sync_events,
     }
 };
 
@@ -27,6 +30,8 @@ pub async fn join_room(
     user_id: OwnedUserId,
     room_id: OwnedRoomId,
 ) -> Result<(), anyhow::Error> {
+
+    sleep(Duration::from_secs(5)).await;
 
     let access_token = state.db.access_tokens.get(&user_id.to_string())
         .await?;
@@ -37,11 +42,23 @@ pub async fn join_room(
         .build::<HttpClient>()
         .await?;
 
+    let joined_rooms = client
+        .send_request(joined_rooms::v3::Request::new())
+        .await?;
+
+    if joined_rooms.joined_rooms.contains(&room_id) {
+        tracing::info!("Already joined room {}", room_id);
+        return Ok(());
+    }
+
+
     let req = join_room_by_id::v3::Request::new(
         room_id.clone(),
     );
 
     client.send_request(req).await?;
+
+    tracing::info!("Joined room {}", room_id);
 
 
     let is_local = is_local_room(&room_id, &state.config.matrix.server_name);
@@ -50,13 +67,10 @@ pub async fn join_room(
         return Ok(());
     }
 
+
     tracing::info!("Room is not local, we should fetch state and messages to initiate sync...");
 
-    // sleep for a bit for sync to complete
-    sleep(Duration::from_secs(3)).await;
-
-
-    let state = client
+    let _ = client
         .send_request(get_state_events::v3::Request::new(
             room_id.clone(),
         ))
@@ -69,10 +83,11 @@ pub async fn join_room(
 
     let mut filter = RoomEventFilter::empty();
     filter.unread_thread_notifications = true;
+    filter.types = Some(vec!["matrixbird.email.matrix".to_string(), "matrixbird.thread.marker".to_string()]);
 
     req.filter = filter;
 
-    if let Some(limit) = UInt::new(1000) {
+    if let Some(limit) = UInt::new(10) {
         req.limit = limit;
     }
 
@@ -80,12 +95,16 @@ pub async fn join_room(
         .send_request(req)
         .await?;
 
+    println!("Messages length: {:?}", messages.chunk.len());
+
+
     let threads = client
         .send_request(get_threads::v1::Request::new(
             room_id.clone(),
         ))
         .await?;
 
+    println!("Threads: {:?}", threads);
 
     Ok(())
 }

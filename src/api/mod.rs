@@ -308,7 +308,6 @@ pub async fn transactions(
                 let invited_user = member_event.state_key().to_owned();
                 if invited_user != state.appservice.user_id() {
                     info!("Auto-joining room on behalf of user: {}", invited_user);
-                    /*
                     let state_clone = state.clone();
 
                     tokio::spawn(async move {
@@ -318,7 +317,6 @@ pub async fn transactions(
                             room_id,
                         ).await;
                     });
-                    */
 
 
                     continue;
