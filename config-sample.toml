@@ -19,8 +19,9 @@ hs_access_token = ""
 homeserver = "http://localhost:8080"
 server_name = "localhost:8480"
 
-[email]
-send_welcome_emails = true
+[auto_join]
+local = true
+federated = true
 
 [email.incoming]
 enabled = true
