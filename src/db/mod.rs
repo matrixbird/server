@@ -6,7 +6,6 @@ mod access_tokens;
 
 use sqlx::postgres::{PgPool, PgPoolOptions, PgConnectOptions};
 use sqlx::ConnectOptions;
-use sqlx::Row;
 use std::process;
 
 use crate::config::Config;

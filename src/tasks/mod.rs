@@ -425,8 +425,6 @@ pub async fn process_email(
 
                 if let Ok(_) = state.appservice.set_pending_email(room_id.clone(), event_id.clone()).await{
                     tracing::info!("Pending email set successfully");
-                    tracing::info!("Pending email set successfully");
-                    tracing::info!("Pending email set successfully");
                 }
 
                 /*

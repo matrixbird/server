@@ -9,6 +9,7 @@ pub struct Config {
     pub server: Server,
     pub db: DB,
     pub appservice: AppService,
+    pub auto_join: AutoJoin,
     pub matrix: Matrix,
     pub redis: Redis,
     pub features: Features,
@@ -40,6 +41,13 @@ pub struct AuthenticationFeatures {
     pub require_verification: bool,
     pub require_invite_code: bool,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AutoJoin {
+    pub local: bool,
+    pub federated: bool,
+}
+
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Email {

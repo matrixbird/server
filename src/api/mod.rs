@@ -1,7 +1,6 @@
 use axum::{
     extract::State,
     http::StatusCode,
-    response::{IntoResponse, Response},
     Json,
 };
 
@@ -13,7 +12,6 @@ use ruma::OwnedRoomId;
 use serde::{Serialize, Deserialize};
 use serde_json::{Value, json};
 use std::sync::Arc;
-use tracing::{info, warn};
 
 use crate::AppState;
 
@@ -302,18 +300,19 @@ pub async fn transactions(
 
 
         match membership {
-            MembershipState::Invite => {
-
+            /*
+            MembershipState::Join => {
                 // Auto-join rooms with user's access token
-                let invited_user = member_event.state_key().to_owned();
-                if invited_user != state.appservice.user_id() {
-                    info!("Auto-joining room on behalf of user: {}", invited_user);
+                let joined_user = member_event.sender().to_owned();
+                if joined_user != state.appservice.user_id() {
+                    info!("Syncing room: {}", joined_user);
+
                     let state_clone = state.clone();
 
                     tokio::spawn(async move {
                         let _ = tasks::user::join_room(
                             state_clone, 
-                            invited_user,
+                            joined_user,
                             room_id,
                         ).await;
                     });
@@ -321,8 +320,17 @@ pub async fn transactions(
 
                     continue;
                 }
+            },
+            */
+            MembershipState::Invite => {
 
-                info!("Joining room: {}", room_id);
+                // Auto-join rooms with user's access token
+                let invited_user = member_event.state_key().to_owned();
+                if invited_user != state.appservice.user_id() {
+                    continue;
+                }
+
+                tracing::info!("Joining room: {}", room_id);
 
                 if let Ok(room_id) =  state.appservice.join_room(room_id.clone()).await{
 

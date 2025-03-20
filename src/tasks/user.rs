@@ -25,6 +25,41 @@ use ruma::{
     }
 };
 
+pub async fn sync_once(
+    state: Arc<AppState>,
+    access_token: Option<String>,
+    room_id: OwnedRoomId,
+) -> Result<String, anyhow::Error> {
+
+    let client = ruma::Client::builder()
+        .homeserver_url(state.config.matrix.homeserver.clone())
+        .access_token(access_token)
+        .build::<HttpClient>()
+        .await?;
+
+    let mut sync_req = sync_events::v3::Request::new();
+    sync_req.full_state = true;
+    let mut room_event_filter = RoomEventFilter::empty();
+    room_event_filter.types = Some(vec!["matrixbird.email.matrix".to_string(), "matrixbird.thread.marker".to_string()]);
+    if let Some(limit) = UInt::new(50) {
+        room_event_filter.limit = Some(limit);
+    }
+    let mut room_filter = RoomFilter::empty();
+    room_filter.rooms = Some(vec![room_id]);
+    let mut filter_def = FilterDefinition::empty();
+    filter_def.room = room_filter;
+    sync_req.filter = Some(Filter::FilterDefinition(filter_def));
+    sync_req.timeout = Some(Duration::from_secs(10));
+
+    let sync = client
+        .send_request(sync_req.clone())
+        .await?;
+
+    println!("Next batch from first sync: {:?}", sync.next_batch);
+
+    Ok(sync.next_batch)
+}
+
 pub async fn join_room(
     state: Arc<AppState>,
     user_id: OwnedUserId,
