@@ -300,31 +300,8 @@ pub async fn transactions(
 
 
         match membership {
-            /*
-            MembershipState::Join => {
-                // Auto-join rooms with user's access token
-                let joined_user = member_event.sender().to_owned();
-                if joined_user != state.appservice.user_id() {
-                    info!("Syncing room: {}", joined_user);
-
-                    let state_clone = state.clone();
-
-                    tokio::spawn(async move {
-                        let _ = tasks::user::join_room(
-                            state_clone, 
-                            joined_user,
-                            room_id,
-                        ).await;
-                    });
-
-
-                    continue;
-                }
-            },
-            */
             MembershipState::Invite => {
 
-                // Auto-join rooms with user's access token
                 let invited_user = member_event.state_key().to_owned();
                 if invited_user != state.appservice.user_id() {
                     continue;
