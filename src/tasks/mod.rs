@@ -108,7 +108,7 @@ pub async fn build_mailbox_rooms(
 
         let rooms = Vec::from([
             "INBOX",
-            //"DRAFTS",
+            "DRAFTS",
             //"SCREEN",
             //"OUTBOX",
             //"SELF",
