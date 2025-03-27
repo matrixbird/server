@@ -125,10 +125,12 @@ pub async fn transactions(
     for event in events {
         //println!("Event: {:#?}", event);
         //tracing::info!("Event: {:#?}", event);
+        if cfg!(debug_assertions) {
+            println!("Event: {:#?}", event);
+        }
 
         let state_copy = state.clone();
         let event_copy = event.clone();
-
 
         tokio::spawn(async move {
             store_event_to_db(state_copy, event_copy).await;
@@ -148,113 +150,13 @@ pub async fn transactions(
         */
 
         // Handle outgoing emails
-        if let Some(event_type) = event["type"].as_str() {
-
-            if event_type.contains("matrixbird.email.standard") {
-                tracing::info!("Outgoing standard email: {}", event_type);
-
-                let reply_to = match event["content"]["to"].as_str() {
-                    Some(to) => to,
-                    None => ""
-                };
-
-                if reply_to == "" {
-                    tracing::warn!("Missing reply_to");
-                    continue;
-                }
-
-                let from = match event["content"]["from"]["address"].as_str() {
-                    Some(from) => from,
-                    None => ""
-                };
-
-                if from == "" {
-                    tracing::warn!("Missing from");
-                    continue;
-                }
-
-                let mut from = from.to_string();
-
-                if state.development_mode() {
-                    //replace domain part
-                    let replaced = replace_email_domain(&from, state.config.email.incoming.domain.as_str());
-
-                    from = replaced;
-                }
+        let state_copy = state.clone();
+        let event_copy = event.clone();
+        tokio::spawn(async move {
+            process_outgoing(state_copy, event_copy).await;
+        });
 
 
-                let message_id = match event["content"]["m.relates_to"]["matrixbird.in_reply_to"].as_str() {
-                    Some(subject) => subject,
-                    None => ""
-                };
-
-                if message_id == "" {
-                    tracing::warn!("Missing message_id");
-                    continue;
-                }
-
-                let subject = match event["content"]["subject"].as_str() {
-                    Some(subject) => subject,
-                    None => ""
-                };
-
-                let html = match event["content"]["body"]["html"].as_str() {
-                    Some(html) => html,
-                    None => ""
-                };
-
-                let text = match event["content"]["body"]["text"].as_str() {
-                    Some(text) => text,
-                    None => ""
-                };
-
-
-                let sent = state.mail.send_reply(
-                    message_id,
-                    reply_to,
-                    from.to_string(),
-                    subject,
-                    text.to_string(),
-                    html.to_string(),
-                );
-
-                match sent.await {
-                    Ok(response) => {
-                        tracing::info!("Matrix email reply sent: {:#?}", response);
-                    }
-                    Err(e) => {
-                        tracing::warn!("Failed to send email reply: {:#?}", e);
-                    }
-                }
-            }
-
-
-            if event_type.contains("matrixbird.email.reply") {
-                tracing::info!("Outgoing matrix email: {}", event_type);
-
-                let recipients: Vec<String> = event["content"]["recipients"]
-                    .as_array()
-                    .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
-                    .unwrap_or_default();
-
-                for recipient in recipients {
-
-                    if recipient == state.appservice.user_id() {
-
-
-                        let state_copy = state.clone();
-                        let event_copy = event.clone();
-
-                        tokio::spawn(async move {
-                            tasks::process_reply(state_copy, event_copy).await;
-                        });
-                    }
-                }
-
-
-            }
-
-        }
 
         /*
         // if this is a review event, send it to the recipient's inbox
@@ -343,3 +245,95 @@ pub async fn transactions(
     Ok(Json(json!({})))
 }
 
+async fn process_outgoing(
+    state: Arc<AppState>,
+    event: Value,
+) {
+
+    let event_type = match event["type"].as_str() {
+        Some(event_type) => event_type,
+        None => {
+            tracing::warn!("Missing event type");
+            return;
+        }
+    };
+
+    if event_type.contains("matrixbird.email.standard") {
+        process_standard_email(state, event).await;
+    } else if event_type.contains("matrixbird.email.reply") {
+        process_email_reply(state, event).await;
+    }
+
+}
+
+async fn process_standard_email(state: Arc<AppState>, event: Value) {
+    tracing::info!("Outgoing standard email: {}", event["type"].as_str().unwrap_or_default());
+
+    let reply_to = match event["content"]["to"].as_str() {
+        Some(to) if !to.is_empty() => to,
+        _ => {
+            tracing::warn!("Missing reply_to");
+            return;
+        }
+    };
+
+    let from = match event["content"]["from"]["address"].as_str() {
+        Some(from) if !from.is_empty() => from,
+        _ => {
+            tracing::warn!("Missing from");
+            return;
+        }
+    };
+
+    let mut from = from.to_string();
+
+    if state.development_mode() {
+        // Replace domain part
+        from = replace_email_domain(&from, state.config.email.incoming.domain.as_str());
+    }
+
+    let message_id = match event["content"]["m.relates_to"]["matrixbird.in_reply_to"].as_str() {
+        Some(id) if !id.is_empty() => id,
+        _ => {
+            tracing::warn!("Missing message_id");
+            return;
+        }
+    };
+
+    let subject = event["content"]["subject"].as_str().unwrap_or_default();
+    let html = event["content"]["body"]["html"].as_str().unwrap_or_default();
+    let text = event["content"]["body"]["text"].as_str().unwrap_or_default();
+
+    match state
+        .mail
+        .send_reply(
+            message_id,
+            reply_to,
+            from,
+            subject,
+            text.to_string(),
+            html.to_string(),
+        )
+        .await
+    {
+        Ok(response) => {
+            tracing::info!("Matrix email reply sent: {:#?}", response);
+        }
+        Err(e) => {
+            tracing::warn!("Failed to send email reply: {:#?}", e);
+        }
+    }
+}
+
+async fn process_email_reply(state: Arc<AppState>, event: Value) {
+    tracing::info!("Outgoing matrix email: {}", event["type"].as_str().unwrap_or_default());
+
+    let recipients: Vec<String> = event["content"]["recipients"]
+        .as_array()
+        .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+        .unwrap_or_default();
+
+    if recipients.iter().any(|r| *r == state.appservice.user_id()) {
+        tasks::process_reply(state.clone(), event.clone()).await;
+    }
+}
