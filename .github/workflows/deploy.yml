@@ -1,55 +1,20 @@
 name: Deploy
 
 on:
-  push:
-    branches: [ "main" ]
-    paths:
-      - 'src/**'
-      - 'Cargo.toml'
-      - 'Cargo.lock'
-      - 'build.rs'
-      - '.github/workflows/deploy.yml'
-  pull_request:
-    branches: [ "main" ]
+  workflow_run:
+    workflows: ["Build"]
+    types:
+      - completed
 
 jobs:
-  build:
-    name: Build Binary
-
-    runs-on: ubuntu-24.04-arm
-
-    permissions:
-      contents: read
-
-    steps:
-
-    - name: Checkout repository
-      uses: actions/checkout@v4
-
-    - name: Set up Rust
-      uses: dtolnay/rust-toolchain@stable
-        
-    - name: Build 
-      run: cargo build --release
-
-    - name: Upload binary artifact
-      uses: actions/upload-artifact@v4.6.2
-      with:
-        name: matrixbird
-        path: target/release/matrixbird
-
-  upload:
-    name: Upload Binary
+  deploy:
+    name: Upload to VPS
     runs-on: ubuntu-24.04
 
-    needs:
-      - build
-
     permissions:
       contents: read
 
     steps:
-
     - name: Download binary
       uses: actions/download-artifact@v4
       with:
@@ -66,7 +31,7 @@ jobs:
         chmod 600 ~/.ssh/id_ed25519
         ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
 
-    - name: Update repos & copy binary 
+    - name: Update repos
       run: |
        ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} <<EOF
        cd /home/${{ secrets.VPS_USER }}/matrixbird.com/server
