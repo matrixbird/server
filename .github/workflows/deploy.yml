@@ -55,6 +55,9 @@ jobs:
       with:
         name: matrixbird
         path: .
+
+    - name: Make binary executable
+      run: chmod +x matrixbird
       
     - name: Setup SSH
       run: |
