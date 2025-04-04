@@ -33,14 +33,17 @@ pub async fn password_reset(
     let user_id = format!(
         "@{}:{}", 
         payload.username.clone().to_lowercase(),
-        state.config.matrix.homeserver
+        state.config.matrix.server_name
     );
+
+    println!("User ID: {}", user_id);
 
     let email = if let Ok(Some(email)) = state.db.users.get_email_from_user_id(
         &user_id
     ).await{
         email
     } else {
+        println!("User not found");
         // Silently fail if the user doesn't exist
         // The user will wait expecting a verification code
         // But nothing will happen
@@ -74,7 +77,6 @@ pub async fn password_reset(
             }
         }
 
-
         return Ok(Json(json!({
             "session": session
         })))
@@ -82,6 +84,37 @@ pub async fn password_reset(
 
     Ok(Json(json!({
         "error": "Could not send verification email."
+    })))
+}
+
+
+#[derive(Debug, Deserialize)]
+pub struct PasswordResetCodeRequest {
+    pub client_secret: String,
+    pub session: String,
+    pub code: String,
+}
+
+pub async fn verify_password_reset_code(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<PasswordResetCodeRequest>,
+) -> Result<impl IntoResponse, AppserviceError> {
+
+    println!("Password reset code verification request: {:?}", payload);
+
+    if let Ok(Some(request)) = state.session.get_code_session(
+        payload.session.clone(),
+    ).await {
+        if request.code == payload.code && 
+            request.client_secret == payload.client_secret {
+            return Ok(Json(json!({
+                "verified": true
+            })))
+        }
+    }
+
+    Ok(Json(json!({
+        "error": "Could not verify code."
     })))
 }
 

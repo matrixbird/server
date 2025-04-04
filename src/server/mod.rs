@@ -34,6 +34,8 @@ use crate::hook::hook;
 use crate::handlers::auth::{
     login, 
     signup, 
+    password_reset,
+    verify_password_reset_code,
     verify_email, 
     verify_code,
     username_available, 
@@ -110,6 +112,8 @@ impl Server {
             .route("/session/revoke", get(revoke_session))
             .route("/username/available/:username", get(username_available))
             .route("/email/verify", post(verify_email))
+            .route("/password/reset", post(password_reset))
+            .route("/password/code/verify", post(verify_password_reset_code))
             .route("/code/verify", post(verify_code));
 
         let email_routes = Router::new()
