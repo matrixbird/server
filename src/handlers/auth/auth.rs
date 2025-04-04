@@ -77,6 +77,9 @@ pub async fn verify_email(
     if let Ok(exists) = state.db.users.email_exists(
         payload.email.clone().as_str()
     ).await{
+        // If this email exists, we'll just return the session id
+        // TODO: Fix this later - we'll send an email asking the existing
+        // user if they requested a new session
         if exists {
             let session_id = Uuid::new_v4().to_string();
             return Ok(Json(json!({
