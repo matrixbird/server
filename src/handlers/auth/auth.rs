@@ -85,6 +85,8 @@ pub async fn verify_email(
         }
     }
 
+    // Put this behind a config flag later
+    /*
     let reject = state.email_providers.reject(
         payload.email.clone().as_str()
     ).await;
@@ -95,6 +97,7 @@ pub async fn verify_email(
             "error": "Email provider not allowed."
         })))
     }
+    */
 
     if let Ok((session, code)) = state.session.create_verification_code(
         payload.email.clone(),
@@ -105,7 +108,7 @@ pub async fn verify_email(
         let sent = state.mail.send(
             &payload.email,
             "Verification Code",
-            "verification-code.html",
+            "verification_code.html",
             serde_json::json!({
                 "code": code,
             }),
