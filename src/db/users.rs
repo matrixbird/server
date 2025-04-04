@@ -71,6 +71,6 @@ impl UserQueries {
             .fetch_one(&self.pool)
             .await?;
 
-        Ok(row.try_get("address").ok())
+        Ok(row.try_get("email").ok())
     }
 }
