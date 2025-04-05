@@ -100,8 +100,14 @@ pub struct AppService {
 pub struct Matrix {
     pub homeserver: String,
     pub server_name: String,
+    pub admin: MatrixAdmin,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MatrixAdmin {
+    pub user_id: String,
+    pub password: String,
+}
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Redis {
     pub session: RedisDB,

@@ -19,6 +19,10 @@ hs_access_token = ""
 homeserver = "http://localhost:8080"
 server_name = "localhost:8480"
 
+[matrix.admin]
+user_id = ""
+password = ""
+
 [auto_join]
 local = true
 federated = true
