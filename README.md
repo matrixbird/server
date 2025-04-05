@@ -27,9 +27,11 @@ $ cd server
 $ cargo build --release
 ```
 
-Copy the `config.sample.toml` file to `config.toml` and fill in the necessary fields - pointing to your matrix homeserver etc.
+Copy the `config.sample.toml` file to `config.toml` and fill in the necessary fields - pointing to your matrix homeserver. It's recommended to use a new and temporary homeserver for now, and not an existing one.
 
 The appservice requires a postgres database to store incoming emails, and transaction events from the matrix homeserver. You'll need the [sqlx-cli](https://github.com/launchbadge/sqlx/blob/main/sqlx-cli/README.md) dependency to setup the database. 
+
+The appservice also needs an admin user to be set up for actions like resetting user passwords etc. This is temporary, until we switch over to native matrix OIC (MAS).
 
 After installing `slqx-cli`:
 
