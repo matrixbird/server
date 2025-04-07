@@ -79,15 +79,6 @@ impl AppState {
 
         let admin = admin::Admin::new(&config).await;
 
-        match reset {
-            Ok(_) => {
-                tracing::info!("Admin password reset successfully");
-            }
-            Err(e) => {
-                tracing::error!("Failed to reset admin password: {}", e);
-            }
-        }
-
         println!("Running in {} mode", mode);
 
         let state = Arc::new(Self {
