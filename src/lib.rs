@@ -15,6 +15,7 @@ pub mod session;
 pub mod domain;
 pub mod error;
 pub mod utils;
+pub mod admin;
 
 //use tokio::time::{interval, Duration};
 
@@ -38,6 +39,7 @@ pub struct AppState {
     pub email_providers: email::EmailProviders,
     pub templates: templates::EmailTemplates,
     pub keys: crypto::Keys,
+    pub admin: admin::Admin,
 }
 
 impl AppState {
@@ -75,6 +77,17 @@ impl AppState {
             None => "production".to_string(),
         };
 
+        let admin = admin::Admin::new(&config).await;
+
+        match reset {
+            Ok(_) => {
+                tracing::info!("Admin password reset successfully");
+            }
+            Err(e) => {
+                tracing::error!("Failed to reset admin password: {}", e);
+            }
+        }
+
         println!("Running in {} mode", mode);
 
         let state = Arc::new(Self {
@@ -90,6 +103,7 @@ impl AppState {
             email_providers: providers,
             templates,
             keys,
+            admin,
         });
 
 
