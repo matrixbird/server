@@ -10,8 +10,8 @@ allow_origin = [""]
 url = "postgres://postgres:postgres@localhost:5432/matrixbird"
 
 [appservice]
-id = "matrixbird"
-sender_localpart = "matrixbird"
+id = "matrixbird_appservice"
+sender_localpart = "matrixbird_appservice"
 access_token = ""
 hs_access_token = ""
 
@@ -19,9 +19,10 @@ hs_access_token = ""
 homeserver = "http://localhost:8080"
 server_name = "localhost:8480"
 
-[matrix.admin]
-user_id = ""
-password = ""
+# Make sure to create this admin user on the homeserver - see synapse docs
+[admin]
+user = "matrixbird_admin"
+password = "strong-password"
 
 [auto_join]
 local = true

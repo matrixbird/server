@@ -11,6 +11,7 @@ pub struct Config {
     pub appservice: AppService,
     pub auto_join: AutoJoin,
     pub matrix: Matrix,
+    pub admin: Admin,
     pub redis: Redis,
     pub features: Features,
     pub email: Email,
@@ -100,12 +101,11 @@ pub struct AppService {
 pub struct Matrix {
     pub homeserver: String,
     pub server_name: String,
-    pub admin: MatrixAdmin,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MatrixAdmin {
-    pub user_id: String,
+pub struct Admin {
+    pub user: String,
     pub password: String,
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
