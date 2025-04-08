@@ -137,14 +137,22 @@ pub async fn update_password(
     ).await {
         if request.client_secret == payload.client_secret {
 
+            let email = request.email;
 
-            if let Ok(()) = state.admin.reset_password(
-                &payload.client_secret,
-                &payload.password,
-            ).await {
-                return Ok(Json(json!({
-                    "reset": true
-                })))
+            if let Ok(Some(user_id)) = state.db.users.get_user_id_from_email(&email)
+            .await {
+                println!("User ID: {}", user_id);
+
+                if let Ok(()) = state.admin.reset_password(
+                    &user_id,
+                    &payload.password,
+                ).await {
+                    return Ok(Json(json!({
+                        "updated": true
+                    })))
+                }
+
+
             }
 
         }
