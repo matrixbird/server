@@ -230,7 +230,6 @@ pub async fn build_user_room(
     if room_type == "INBOX" {
         let appservice_id = *state.appservice.user_id.clone();
         req.invite = vec![appservice_id];
-
     }
 
     let resp = client.send_request(req).await?;

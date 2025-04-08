@@ -1,7 +1,7 @@
 use crate::config::Config;
 use crate::appservice::HttpClient;
 
-use serde_json::{json, Value};
+use serde_json::json;
 
 use std::time::Duration;
 

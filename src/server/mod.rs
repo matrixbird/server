@@ -131,6 +131,7 @@ impl Server {
             .route("/features/authentication", get(authentication_features))
             .route("/key", get(verify_key))
             .route("/version", get(version))
+            .route("/identity", get(identity))
             .route("/", get(index));
 
         /*
@@ -197,6 +198,18 @@ pub async fn health(
         "healthy": true,
     })))
 }
+
+pub async fn identity(
+    State(state): State<Arc<AppState>>,
+) -> Result<impl IntoResponse, ()> {
+
+    let user_id = format!("@{}:{}", state.config.appservice.sender_localpart, state.config.matrix.server_name);
+
+    Ok(Json(json!({
+        "appservice_user_id": user_id,
+    })))
+}
+
 
 pub async fn index(
     State(state): State<Arc<AppState>>,

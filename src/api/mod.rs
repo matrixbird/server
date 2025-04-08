@@ -4,9 +4,12 @@ use axum::{
     Json,
 };
 
-use ruma::events::room::
-member::{RoomMemberEvent, MembershipState};
-use ruma::OwnedRoomId;
+use ruma::{
+    OwnedRoomId,
+    events::room::member::{RoomMemberEvent, MembershipState}
+};
+
+use ruma::events::macros::EventContent;
 
 
 use serde::{Serialize, Deserialize};
@@ -109,6 +112,13 @@ async fn store_event_to_db(
     }
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize, EventContent)]
+#[ruma_event(type = "matrixbird.room.type", kind = State, state_key_type = String)]
+pub struct MatrixbirdRoomTypeEventContent {
+    #[serde(rename = "type")]
+    pub room_type: String,
+}
+
 pub async fn transactions(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<Value>,
@@ -185,6 +195,47 @@ pub async fn transactions(
         }
         */
 
+        // Join mailbox rooms of type INBOX
+        /*
+        if let Ok(event) = serde_json::from_value::<MatrixbirdRoomTypeEvent>(event.clone()) {
+            tracing::info!("Matrixbird mailbox room event.");
+            let room_id = event.room_id().to_owned();
+            let room_type = event.state_key().to_owned();
+            let sender = event.sender().to_owned();
+
+            let is_inbox = room_type == "INBOX";
+
+            if is_inbox {
+                tracing::info!("Joining INBOX room: {}", room_id);
+
+                if let Ok(room_id) =  state.appservice.join_room(room_id.clone()).await{
+
+                    if let Ok(room_type) = state.appservice.get_room_type(room_id.clone(), "INBOX".to_string()).await{
+                        if room_type == "INBOX" {
+
+                            let state_clone = state.clone();
+
+                            // Send welcome emails and messages
+                            tokio::spawn(async move {
+                                tasks::send_welcome(
+                                    state_clone, 
+                                    sender,
+                                    room_id,
+                                ).await;
+                            });
+
+                        }
+                    }
+
+
+
+                };
+
+
+            }
+
+        };
+        */
 
 
         let member_event = if let Ok(event) = serde_json::from_value::<RoomMemberEvent>(event.clone()) {
