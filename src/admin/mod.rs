@@ -2,6 +2,7 @@ use crate::config::Config;
 use crate::appservice::HttpClient;
 
 use serde_json::json;
+use serde::{Serialize, Deserialize};
 
 use std::time::Duration;
 
@@ -17,6 +18,11 @@ use crate::utils::construct_matrix_id;
 pub struct Admin {
     pub base_url: String,
     pub access_token: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct VerifyAdmin {
+    pub admin: bool,
 }
 
 impl Admin {
@@ -60,10 +66,52 @@ impl Admin {
 
         let base_url = format!("{}/_synapse/admin/v1", config.matrix.homeserver);
 
+        let is_admin = Self::verify_admin(
+                &base_url,
+                &resp.access_token,
+                &user_id
+            ).await.unwrap_or_else(|e| {
+                tracing::error!("Failed to verify admin user. {}", e);
+                println!("Make sure the user {} is an admin.", user_id);
+                std::process::exit(1);
+            });
+
+        if !is_admin {
+            tracing::error!("User {} is not an admin.", user_id);
+            println!("Make sure the user {} is an admin.", user_id);
+            std::process::exit(1);
+        }
+
         Self { 
             base_url,
             access_token: resp.access_token,
         }
+    }
+
+    pub async fn verify_admin(
+        base_url: &str,
+        access_token: &str,
+        user_id: &str,
+    ) -> Result<bool, anyhow::Error> {
+
+        let url = format!("{}/users/{}/admin", base_url, user_id);
+
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(5))
+            .connect_timeout(Duration::from_secs(3)) 
+            .build()?;
+
+        let response = client
+            .get(&url)
+            .bearer_auth(access_token)
+            .send()
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to verify that user is admin: {}", e))?;
+
+        let resp = response.json::<VerifyAdmin>().await
+            .map_err(|e| anyhow::anyhow!("Failed to parse admin response. {}", e))?;
+
+        Ok(resp.admin)
     }
 
     pub async fn reset_password(
