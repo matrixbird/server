@@ -16,6 +16,11 @@ use serde::Deserialize;
 use crate::AppState;
 use crate::error::AppserviceError;
 
+use crate::handlers::auth::{
+    LoginRequest,
+    login_after_password_reset,
+};
+
 
 #[derive(Debug, Deserialize)]
 pub struct PasswordResetRequest {
@@ -147,9 +152,27 @@ pub async fn update_password(
                     &user_id,
                     &payload.password,
                 ).await {
+
+                    // Login after successful password reset
+                    //
+
+                    let resp = login_after_password_reset(
+                        state.clone(),
+                        LoginRequest{
+                            user: user_id.clone(),
+                            password: payload.password.clone(),
+                        }
+                    ).await?;
+
+                    return Ok(resp)
+
+
+                    /*
                     return Ok(Json(json!({
                         "updated": true
                     })))
+                    */
+
                 }
 
 
