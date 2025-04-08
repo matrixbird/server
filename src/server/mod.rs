@@ -35,6 +35,7 @@ use crate::handlers::auth::{
     login, 
     signup, 
     password_reset,
+    update_password,
     verify_password_reset_code,
     verify_email, 
     verify_code,
@@ -113,6 +114,7 @@ impl Server {
             .route("/username/available/:username", get(username_available))
             .route("/email/verify", post(verify_email))
             .route("/password/reset", post(password_reset))
+            .route("/password/update", post(update_password))
             .route("/password/code/verify", post(verify_password_reset_code))
             .route("/code/verify", post(verify_code));
 

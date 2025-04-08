@@ -118,3 +118,40 @@ pub async fn verify_password_reset_code(
     })))
 }
 
+#[derive(Debug, Deserialize)]
+pub struct PasswordReset {
+    pub client_secret: String,
+    pub session: String,
+    pub password: String,
+}
+
+pub async fn update_password(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<PasswordReset>,
+) -> Result<impl IntoResponse, AppserviceError> {
+
+    println!("Password reset request: {:?}", payload);
+
+    if let Ok(Some(request)) = state.session.get_code_session(
+        payload.session.clone(),
+    ).await {
+        if request.client_secret == payload.client_secret {
+
+
+            if let Ok(()) = state.admin.reset_password(
+                &payload.client_secret,
+                &payload.password,
+            ).await {
+                return Ok(Json(json!({
+                    "reset": true
+                })))
+            }
+
+        }
+    }
+
+    Ok(Json(json!({
+        "error": "Could not reset password."
+    })))
+}
+
