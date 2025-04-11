@@ -99,28 +99,28 @@ impl Server {
         let addr = format!("0.0.0.0:{}", &self.state.config.server.port);
 
         let service_routes = Router::new()
-            .route("/ping", post(ping))
-            .route("/transactions/:txn_id", put(transactions))
+            .route("/_matrix/app/v1/ping", post(ping))
+            .route("/_matrix/app/v1/transactions/{txn_id}", put(transactions))
             .route_layer(axum_middleware::from_fn_with_state(self.state.clone(), authenticate_homeserver));
 
         let auth_routes = Router::new()
-            .route("/login", post(login))
-            .route("/signup", post(signup))
-            .route("/code/validate/:code", get(validate_invite_code))
-            .route("/request/invite/:email", get(request_invite))
+            .route("/auth/login", post(login))
+            .route("/auth/signup", post(signup))
+            .route("/auth/code/validate/{code}", get(validate_invite_code))
+            .route("/auth/request/invite/{email}", get(request_invite))
             //.route("/session/validate/:device_id", get(validate_session))
-            .route("/session/validate", get(validate_session))
-            .route("/session/revoke", get(revoke_session))
-            .route("/username/available/:username", get(username_available))
-            .route("/email/verify", post(verify_email))
-            .route("/password/reset", post(password_reset))
-            .route("/password/update", post(update_password))
-            .route("/password/code/verify", post(verify_password_reset_code))
-            .route("/code/verify", post(verify_code));
+            .route("/auth/session/validate", get(validate_session))
+            .route("/auth/session/revoke", get(revoke_session))
+            .route("/auth/username/available/{username}", get(username_available))
+            .route("/auth/email/verify", post(verify_email))
+            .route("/auth/password/reset", post(password_reset))
+            .route("/auth/password/update", post(update_password))
+            .route("/auth/password/code/verify", post(verify_password_reset_code))
+            .route("/auth/code/verify", post(verify_code));
 
         let email_routes = Router::new()
-            .route("/domain/:domain", get(validate_domain))
-            .route("/email/:email", get(is_matrix_email))
+            .route("/domain/{domain}", get(validate_domain))
+            .route("/email/{email}", get(is_matrix_email))
             .route("/homeserver", get(homeserver));
 
 
@@ -141,10 +141,10 @@ impl Server {
         */
 
         let app = Router::new()
-            .nest("/_matrix/app/v1", service_routes)
-            .nest("/auth", auth_routes)
-            .nest("/", email_routes)
-            .nest("/", base_routes)
+            .merge(service_routes)
+            .merge(auth_routes)
+            .merge(email_routes)
+            .merge(base_routes)
             .layer(self.setup_cors(&self.state.config))
             .layer(TraceLayer::new_for_http()
                 .make_span_with(|request: &Request<_>| {
