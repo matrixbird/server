@@ -56,6 +56,8 @@ use crate::domain::{
     homeserver
 };
 
+use crate::handlers::email::incoming_email;
+
 use crate::crypto::verify_key;
 
 use crate::api::transactions;
@@ -123,6 +125,9 @@ impl Server {
             .route("/email/{email}", get(is_matrix_email))
             .route("/homeserver", get(homeserver));
 
+        let incoming_routes = Router::new()
+            .route("/email/incoming/{sender}/{recipient}", post(incoming_email));
+
 
         let base_routes = Router::new()
             .route("/hook", post(hook))
@@ -145,6 +150,7 @@ impl Server {
             .merge(auth_routes)
             .merge(email_routes)
             .merge(base_routes)
+            .merge(incoming_routes)
             .layer(self.setup_cors(&self.state.config))
             .layer(TraceLayer::new_for_http()
                 .make_span_with(|request: &Request<_>| {
