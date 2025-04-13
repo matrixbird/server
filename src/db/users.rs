@@ -32,6 +32,17 @@ impl UserQueries {
         Ok(exists)
     }
 
+    pub async fn local_part_exists(&self, local_part: &str) -> Result<bool, anyhow::Error>{
+        let row = sqlx::query("SELECT EXISTS(SELECT 1 FROM users WHERE local_part = $1 and active = true)")
+            .bind(local_part)
+            .fetch_one(&self.pool)
+            .await?;
+
+        let exists: bool = row.get(0);
+        Ok(exists)
+    }
+
+
     pub async fn create(&self, user_id: &str, local_part: &str) -> Result<(), anyhow::Error> {
 
         sqlx::query("INSERT INTO users (user_id, local_part) VALUES ($1, $2);")
