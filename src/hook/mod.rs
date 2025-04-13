@@ -139,18 +139,6 @@ pub struct Attachment {
 }
 
 
-#[derive(Debug, Deserialize)]
-pub struct InviteRequest {
-    pub message_id: String,
-    pub envelope_from: String,
-    pub envelope_to: String,
-    pub from: Address,
-    pub to: Vec<Address>,
-    pub subject: Option<String>,
-    pub return_path: Option<String>,
-}
-
-
 #[derive(Serialize)]
 pub struct HookResponse {
     action: String,
