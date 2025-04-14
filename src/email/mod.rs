@@ -7,6 +7,9 @@ pub use providers::*;
 mod incoming;
 pub use incoming::*;
 
+mod parse;
+pub use parse::*;
+
 use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
 
@@ -72,5 +75,16 @@ pub struct Attachment {
     pub content_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub encoding: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ParsedEmail {
+    pub message_id: String,
+    pub sender: String,
+    pub recipient: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub subject: Option<String>,
+    pub date: Option<DateTime<Utc>>,
+    pub content: Content,
 }
 
