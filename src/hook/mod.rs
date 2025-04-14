@@ -12,6 +12,8 @@ use serde::{Deserialize, Serialize};
 //use ammonia::clean;
 
 
+use crate::email::Email;
+
 
 use crate::AppState;
 
@@ -171,11 +173,6 @@ pub async fn hook(
     }
 
     tracing::info!("Incoming email");
-    tracing::info!("Message ID: {:?}", payload.message_id);
-    tracing::info!("From: {:?}", payload.envelope_from);
-    tracing::info!("To: {:?}", payload.envelope_to);
-    tracing::info!("Subject: {:?}", payload.subject);
-    tracing::info!("Date: {:?}", payload.date);
 
     // Early return for postmaster or invalid localpart
     let (user, tag) = match get_localpart(payload.envelope_to.clone()) {
