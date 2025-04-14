@@ -55,7 +55,7 @@ pub fn setup_tracing() -> WorkerGuard {
         "info"
     };
 
-    let file_appender = tracing_appender::rolling::daily("./logs", "application.log");
+    let file_appender = tracing_appender::rolling::daily("./logs", "matrixbird.log");
     let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
 
     let console_layer = tracing_subscriber::fmt::layer().pretty();
