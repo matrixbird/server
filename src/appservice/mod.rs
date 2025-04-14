@@ -12,6 +12,7 @@ use ruma::{
     TransactionId,  
     UserId,
     api::client::{
+        error::ErrorKind,
         appservice::request_ping,
         alias::get_alias,
         account::{whoami, get_username_availability},
@@ -573,18 +574,29 @@ impl AppService {
             .send_request(av)
             .await;
 
+        if let Err(err) = res {
+            let errkind = err.error_kind();
+            match errkind {
+                Some(ErrorKind::UserInUse) => {
+                    return Ok(true);
+                },
+                _ => {
+                    tracing::error!("Error: {:#?}", err);
+                    return Err(anyhow::anyhow!("Error: {}", err));
+                }
+            }
+        }
+
         match res {
             Err(RumaClientError::Response(err)) => {
                 return Err(anyhow::anyhow!("Couldn't connect to homeserver: {}", err));
             },
-            Err(RumaClientError::FromHttpResponse(_)) => {
-                return Ok(false);
-            },
             Ok(_) => {
-                return Ok(true);
-            },
-            Err(_) => {
                 return Ok(false);
+            },
+            Err(e) => {
+                tracing::error!("Error: {:#?}", e);
+                return Err(anyhow::anyhow!("Error: {}", e));
             },
         }
 
