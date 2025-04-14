@@ -13,7 +13,7 @@ use ruma::{
     api::client::{
         appservice::request_ping,
         alias::get_alias,
-        account::whoami, 
+        account::{whoami, get_username_availability},
         membership::joined_rooms, 
         message::send_message_event,
         media::create_content,
@@ -557,6 +557,26 @@ impl AppService {
             .await?;
 
         Ok(res.content_uri.to_string())
+    }
+
+    pub async fn user_exists(
+        &self, 
+        local_part: &str
+    ) -> Result<bool, anyhow::Error> {
+
+        let av = get_username_availability::v3::Request::new(
+            local_part.to_string(),
+        );
+
+        let res = self.client
+            .send_request(av)
+            .await?;
+
+        match res.available {
+            true => Ok(true),
+            false => Ok(false),
+        }
+
     }
 
 }
