@@ -63,7 +63,14 @@ pub async fn incoming_email(
 
     info!("Successfully extracted email content ({} bytes)", raw_email.len());
 
-    let message = MessageParser::default().parse(&raw_email).unwrap();
+    let message = match MessageParser::default()
+        .parse(&raw_email) {
+        Some(message) => message,
+        None => {
+            error!("Failed to parse email content");
+            return Err(StatusCode::BAD_REQUEST);
+        }
+    };
 
     println!("Parsed email: {:#?}", message.body_text(0));
 
@@ -120,7 +127,11 @@ async fn process_email(
     tracing::info!("User exists: {}", mxid);
     tracing::info!("Processing email for MXID: {}", mxid);
 
+
+
     Ok(StatusCode::OK)
 }
+
+
 
 
