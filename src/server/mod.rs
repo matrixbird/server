@@ -56,7 +56,7 @@ use crate::domain::{
     homeserver
 };
 
-use crate::handlers::email::incoming_email;
+use crate::email::incoming;
 
 use crate::crypto::verify_key;
 
@@ -126,7 +126,7 @@ impl Server {
             .route("/homeserver", get(homeserver));
 
         let incoming_routes = Router::new()
-            .route("/email/incoming/{sender}/{recipient}", post(incoming_email));
+            .route("/email/incoming/{sender}/{recipient}", post(incoming));
 
 
         let base_routes = Router::new()
