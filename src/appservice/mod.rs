@@ -4,6 +4,7 @@ use chrono::Utc;
 use serde::{Serialize, Deserialize};
 
 use ruma::{
+    client::Error as RumaClientError,
     OwnedRoomId,
     OwnedEventId,
     OwnedUserId,
@@ -570,11 +571,21 @@ impl AppService {
 
         let res = self.client
             .send_request(av)
-            .await?;
+            .await;
 
-        match res.available {
-            true => Ok(true),
-            false => Ok(false),
+        match res {
+            Err(RumaClientError::Response(err)) => {
+                return Err(anyhow::anyhow!("Couldn't connect to homeserver: {}", err));
+            },
+            Err(RumaClientError::FromHttpResponse(_)) => {
+                return Ok(false);
+            },
+            Ok(_) => {
+                return Ok(true);
+            },
+            Err(_) => {
+                return Ok(false);
+            },
         }
 
     }

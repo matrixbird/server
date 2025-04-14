@@ -15,6 +15,8 @@ use mail_parser::MessageParser;
 use tracing::{info, error};
 use serde::Deserialize;
 
+use crate::utils::get_localpart;
+
 #[derive(Debug, Deserialize)]
 pub struct IncomingEmail {
     pub sender: String,
@@ -89,6 +91,34 @@ async fn process_email(
     Json(payload): Json<IncomingEmail>,
 ) -> Result<impl IntoResponse, StatusCode> {
     info!("Received email from {} to {}", payload.sender, payload.recipient);
+    if state.config.email.incoming.enabled == false {
+        tracing::info!("Email integration is disabled. Rejecting email.");
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    // Early return for postmaster or invalid localpart
+    let (user, tag) = match get_localpart(payload.recipient.clone()) {
+        Some(parts) => parts,
+        None => return Err(StatusCode::FORBIDDEN),
+    };
+
+    if let Some(tag) = tag {
+        tracing::debug!("Email tag: {}", tag);
+    }
+
+    let exists = state.appservice.user_exists(&user).await.map_err(|e| {
+        tracing::error!("Failed to check user existence: {}", e);
+        StatusCode::SERVICE_UNAVAILABLE
+    })?;
+
+    if !exists {
+        tracing::error!("User does not exist. Rejecting email.");
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    let mxid = format!("@{}:{}", user, state.config.matrix.server_name);
+    tracing::info!("User exists: {}", mxid);
+    tracing::info!("Processing email for MXID: {}", mxid);
 
     Ok(StatusCode::OK)
 }
