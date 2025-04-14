@@ -33,7 +33,7 @@ redis = { version = "0.27.5", features = ["tokio-comp"] }
 regex = "1.11.1"
 reqwest = { version = "0.12.9", features = ["json"] }
 ring = "0.17.12"
-ruma = { version = "0.11.1", features = ["appservice-api-c", "client-hyper-native-tls", "client-api-c", "client-ext-client-api", "rand", "unstable-exhaustive-types"] }
+ruma = { version = "0.12.2", features = ["appservice-api-c", "client-hyper-native-tls", "client-api-c", "client-ext-client-api", "rand"] }
 serde = { version = "1.0.215", features = ["derive"] }
 serde_json = "1.0.133"
 sqlx = { version = "0.8.3", features = ["runtime-tokio", "postgres", "time", "chrono", "tls-native-tls"] }
