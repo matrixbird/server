@@ -16,6 +16,7 @@ pub mod domain;
 pub mod error;
 pub mod utils;
 pub mod admin;
+pub mod storage;
 
 //use tokio::time::{interval, Duration};
 
