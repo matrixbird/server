@@ -73,13 +73,13 @@ impl AppService {
             .build::<HttpClient>()
             .await?;
 
-        let user_id = UserId::parse(&format!("@{}:{}", config.appservice.sender_localpart, config.matrix.server_name))?;
+        let user_id = UserId::parse(format!("@{}:{}", config.appservice.sender_localpart, config.matrix.server_name))?;
 
         let whoami = client
             .send_request(whoami::v3::Request::new())
             .await;
 
-        if let Err(_) = whoami {
+        if whoami.is_err() {
             tracing::error!("Failed to authenticate with homeserver");
             std::process::exit(1);
         }
@@ -97,7 +97,7 @@ impl AppService {
             self.appservice_id.to_string()
         );
 
-        req.transaction_id = Some(OwnedTransactionId::try_from(id)?);
+        req.transaction_id = Some(OwnedTransactionId::from(id));
 
         let response = self.client
             .send_request(req)
@@ -479,11 +479,8 @@ impl AppService {
 
         let mut ev_type = MessageLikeEventType::from("matrixbird.email.matrix");
 
-        match event_type {
-            Some(et) => {
-                ev_type = MessageLikeEventType::from(et);
-            },
-            None => (),
+        if let Some(et) = event_type {
+            ev_type = MessageLikeEventType::from(et);
         }
 
         let mid_localpart = Uuid::new_v4().to_string();
@@ -514,11 +511,8 @@ impl AppService {
             m_relates_to: None,
         };
 
-        match relation {
-            Some(rel) => {
-                em_cont.m_relates_to = Some(rel);
-            },
-            None => (),
+        if let Some(rel) = relation {
+            em_cont.m_relates_to = Some(rel);
         }
 
 
