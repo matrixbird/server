@@ -29,10 +29,7 @@ impl Cache {
 
         let serialized = serde_json::to_string(&well_known)?;
 
-        let ttl = match self.ttl {
-            Some(ttl) => ttl,
-            None => 3600
-        };
+        let ttl = self.ttl.unwrap_or(3600);
 
         let () = conn.set_ex(
             well_known_url,
@@ -52,10 +49,10 @@ impl Cache {
             Some(data) => {
                 let well_known: WellKnown = serde_json::from_str(&data)?;
 
-                return Ok(Some(well_known))
+                Ok(Some(well_known))
             },
             None => {
-                return Ok(None)
+                Ok(None)
             }
         }
 
