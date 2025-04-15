@@ -17,6 +17,7 @@ pub struct Config {
     pub email: Email,
     pub smtp: SMTP,
     pub cache_rules: CacheRules,
+    pub storage: Storage,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -129,6 +130,13 @@ pub struct CacheRules {
     pub well_known: bool,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Storage {
+    pub access_key_id: String,
+    pub access_key_secret: String,
+    pub endpoint: String,
+    pub bucket: String,
+}
 
 fn default_pool_size() -> u32 {
     10

@@ -65,3 +65,9 @@ server = ""
 port = 587
 username = ""
 password = ""
+
+[storage]
+access_key_id = ""
+access_key_secret = ""
+endpoint = ""
+bucket = ""
