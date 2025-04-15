@@ -62,6 +62,7 @@ pub struct Email {
 pub struct IncomingEmail {
     pub enabled: bool,
     pub domain: String,
+    pub token: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
