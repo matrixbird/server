@@ -56,7 +56,8 @@ async fn process_email(
     email: ParsedEmail,
 ) -> Result<impl IntoResponse, StatusCode> {
     info!("Received email from {} to {}", email.sender, email.recipient);
-    if state.config.email.incoming.enabled == false {
+
+    if !state.config.email.incoming.enabled {
         tracing::info!("Email integration is disabled. Rejecting email.");
         return Err(StatusCode::FORBIDDEN);
     }
