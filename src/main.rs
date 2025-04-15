@@ -50,7 +50,7 @@ async fn main() {
 
 pub fn setup_tracing() -> WorkerGuard {
     let env_filter = if cfg!(debug_assertions) {
-        "debug,hyper_util=off,tower_http=off,ruma=off,reqwest=off"
+        "debug,hyper_util=off,tower_http=off,ruma=off,reqwest=off,aws_runtime=off,aws_sdk_s3=off,aws_smithy_runtime=off,aws_smithy_runtime_api=off"
     } else {
         "info"
     };
