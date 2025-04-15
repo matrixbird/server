@@ -11,10 +11,6 @@ use serde::{Deserialize, Serialize};
 
 //use ammonia::clean;
 
-
-use crate::email::Email;
-
-
 use crate::AppState;
 
 use crate::utils::{get_localpart, get_email_subdomain};

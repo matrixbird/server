@@ -31,7 +31,8 @@ impl Admin {
         let client = ruma::Client::builder()
             .homeserver_url(config.matrix.homeserver.clone())
             .build::<HttpClient>()
-            .await.unwrap();
+            .await
+            .unwrap();
 
 
         let user_id = match construct_matrix_id(&config.admin.user, &config.matrix.server_name) {
