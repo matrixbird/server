@@ -123,6 +123,29 @@ pub fn extract_token(header: &str) -> Option<&str> {
     }
 }
 
+pub async fn authenticate_incoming_email(
+    State(state): State<Arc<AppState>>,
+    req: Request<Body>,
+    next: Next,
+) -> Result<Response, StatusCode> {
+
+    if let Some(auth_header) = req
+        .headers()
+        .get(AUTHORIZATION)
+        .and_then(|h| h.to_str().ok()) {
+        if let Some(token) = extract_token(auth_header) {
+            tracing::info!("Checking incoming email token: {}", token);
+            if token == state.config.email.incoming.token {
+                return Ok(next.run(req).await)
+            }
+        }
+    };
+
+    tracing::warn!("Invalid or missing incoming email token.");
+    Err(StatusCode::UNAUTHORIZED)
+}
+
+
 #[derive(Clone)]
 pub struct Data {
     pub user_id: String,

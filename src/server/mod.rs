@@ -26,7 +26,10 @@ use http::header::CONTENT_TYPE;
 use anyhow;
 
 use crate::config::Config;
-use middleware::authenticate_homeserver;
+use middleware::{
+    authenticate_homeserver,
+    authenticate_incoming_email
+};
 
 use crate::handlers::ping::ping;
 use crate::hook::hook;
@@ -126,7 +129,8 @@ impl Server {
             .route("/homeserver", get(homeserver));
 
         let incoming_routes = Router::new()
-            .route("/email/incoming/{sender}/{recipient}", post(incoming));
+            .route("/email/incoming/{sender}/{recipient}", post(incoming))
+            .route_layer(axum_middleware::from_fn_with_state(self.state.clone(), authenticate_incoming_email));
 
 
         let base_routes = Router::new()
