@@ -8,6 +8,8 @@ edition = "2021"
 ammonia = "4.0.0"
 anyhow = "1.0.93"
 async-trait = "0.1.86"
+aws-config = { version = "1.6.1", features = ["behavior-version-latest"] }
+aws-sdk-s3 = "1.82.0"
 axum = { version = "0.8.3", features = ["macros", "multipart"] }
 axum-extra = { version = "0.10.0", features = ["typed-header"] }
 base64 = "0.22.1"
