@@ -72,18 +72,12 @@ pub async fn is_matrix_email(
                     "mxid": mxid
                 });
 
-                match profile.displayname {
-                    Some(displayname) => {
-                        res["displayname"] = json!(displayname);
-                    },
-                    None => {}
+                if let Some(displayname) = profile.displayname {
+                    res["displayname"] = json!(displayname);
                 }
 
-                match profile.avatar_url {
-                    Some(avatar_url) => {
-                        res["avatar_url"] = json!(avatar_url);
-                    },
-                    None => {}
+                if let Some(avatar_url) = profile.avatar_url {
+                    res["avatar_url"] = json!(avatar_url);
                 }
 
                 return Json(res)

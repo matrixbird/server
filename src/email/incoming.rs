@@ -6,7 +6,6 @@ use axum::{
     extract::{State, Multipart, Path},
     response::IntoResponse,
     http::StatusCode,
-    Json,
 };
 
 use crate::email::ParsedEmail;

@@ -58,13 +58,13 @@ pub async fn authenticate_user(
     let auth_header = req
         .headers()
         .get(AUTHORIZATION)
-        .ok_or_else(|| MiddlewareError::Unauthorized)?
+        .ok_or(MiddlewareError::Unauthorized)?
         .to_str()
         .map_err(|_| MiddlewareError::Unauthorized)?;
 
 
     let token = extract_token(auth_header)
-        .ok_or_else(|| MiddlewareError::Unauthorized)?;
+        .ok_or(MiddlewareError::Unauthorized)?;
 
     let client = ruma::Client::builder()
         .homeserver_url(state.config.matrix.homeserver.clone())
@@ -101,7 +101,7 @@ pub async fn authenticate_homeserver(
         .get(AUTHORIZATION)
         .and_then(|h| h.to_str().ok()) {
         if let Some(token) = extract_token(auth_header) {
-            if token == &state.config.appservice.hs_access_token {
+            if token == state.config.appservice.hs_access_token {
                 return Ok(next.run(req).await)
             }
         }
