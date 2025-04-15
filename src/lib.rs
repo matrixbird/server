@@ -31,6 +31,7 @@ pub struct AppState {
     pub mode: String,
     pub config: config::Config,
     pub db: db::Database,
+    pub storage: storage::Storage,
     pub proxy: ProxyClient,
     pub appservice: appservice::AppService,
     pub transaction_store: ping::TransactionStore,
@@ -59,6 +60,8 @@ impl AppState {
 
         let db = db::Database::new(&config).await;
 
+        let storage = storage::Storage::new(&config).await;
+
         let templates = templates::EmailTemplates::new()?;
 
         let mail = email::MailService::new(&config, templates.clone());
@@ -86,6 +89,7 @@ impl AppState {
             mode,
             config,
             db,
+            storage,
             proxy: client,
             appservice,
             transaction_store,
