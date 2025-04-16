@@ -5,9 +5,13 @@ use axum::extract::Multipart;
 
 use tracing::{info, error};
 
-use crate::email::{ParsedEmail, Content};
+use crate::email::{
+    ParsedEmail, 
+    Address,
+    Content
+};
 
-pub async fn get_raw_email(
+pub async fn raw_email(
     mut multipart: Multipart,
 ) -> Result<String, anyhow::Error> {
 
@@ -64,15 +68,30 @@ pub async fn parse_email(
         content.html = Some(html.to_string());
     }
 
-
     let mut email = ParsedEmail {
         message_id: message.message_id().unwrap_or_default().to_string(),
         sender: sender.to_string(),
         recipient: recipient.to_string(),
+        from: Address {
+            name: None,
+            address: sender.to_string(),
+        },
         subject: None,
         date: Utc::now(),
         content,
     };
+
+    if let Some(to) = message.to() {
+        println!("To: {:?}", to);
+        println!("To: {:?}", to);
+        println!("To: {:?}", to);
+    };
+
+    // Parse the "from" address, add name
+    email.from.name = message.from()
+        .and_then(|addrs| addrs.first())
+        .filter(|addr| addr.address().map_or(false, |address| address == sender))
+        .and_then(|addr| addr.name().map(|n| n.to_string()));
 
     if let Some(subject) = message.subject() {
         email.subject = Some(subject.to_string());

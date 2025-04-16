@@ -11,21 +11,13 @@ use axum::{
 //use crate::email::ParsedEmail;
 
 use tracing::{info, error};
-use serde::Deserialize;
 
 use crate::utils::get_localpart;
 
 use crate::email::{
     parse_email,
-    get_raw_email,
+    raw_email,
 };
-
-#[derive(Debug, Deserialize)]
-pub struct IncomingEmail {
-    pub sender: String,
-    pub recipient: String,
-    pub raw_email: String,
-}
 
 pub async fn incoming(
     State(state): State<Arc<AppState>>,
@@ -36,7 +28,8 @@ pub async fn incoming(
     let (sender, recipient) = params;
     info!("Received HTTP email from {} to {}", sender, recipient);
 
-    let raw_email = match get_raw_email(multipart).await {
+    // Get raw email from multipart
+    let raw_email = match raw_email(multipart).await {
         Ok(email) => email,
         Err(_) => {
             error!("Failed to get raw email");
@@ -44,6 +37,7 @@ pub async fn incoming(
         }
     };
 
+    // Build ParsedEmail
     let email = match parse_email(
         &sender,
         &recipient,
@@ -83,6 +77,7 @@ pub async fn incoming(
         return Err(StatusCode::FORBIDDEN);
     }
 
+    // Let's upload the email to object storage
     let state_clone = state.clone();
     let key = format!("{}/{}/{}", recipient, email.date, email.message_id);
     tokio::spawn(async move {
