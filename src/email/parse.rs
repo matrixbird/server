@@ -76,15 +76,23 @@ pub async fn parse_email(
             name: None,
             address: sender.to_string(),
         },
+        to: vec![],
         subject: None,
         date: Utc::now(),
         content,
     };
 
     if let Some(to) = message.to() {
-        println!("To: {:?}", to);
-        println!("To: {:?}", to);
-        println!("To: {:?}", to);
+        let all = to.iter()
+            .filter_map(|addr| {
+                let address = addr.address().unwrap_or_default();
+                Some(Address {
+                    name: addr.name().map(|n| n.to_string()),
+                    address: address.to_string(),
+                })
+            })
+            .collect::<Vec<_>>();
+        email.to = all;
     };
 
     // Parse the "from" address, add name
