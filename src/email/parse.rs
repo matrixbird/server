@@ -93,9 +93,10 @@ pub async fn parse_email<'x>(
         },
         to: vec![],
         subject: None,
-        date: Utc::now(),
+        date: Utc::now().to_rfc3339(),
         content,
         attachments: None,
+        in_reply_to: None,
     };
 
     // Parse the "to" addresses
@@ -127,7 +128,7 @@ pub async fn parse_email<'x>(
     if let Some(date) = message.date() {
         let ts = date.to_timestamp();
         if let Some(date) = DateTime::from_timestamp(ts, 0) {
-            email.date = date;
+            email.date = date.to_rfc3339()
         }
     }
 
