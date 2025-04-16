@@ -7,11 +7,9 @@ use tracing::{info, error};
 
 use crate::email::{ParsedEmail, Content};
 
-pub async fn parse_email(
-    sender: &str,
-    recipient: &str,
+pub async fn get_raw_email(
     mut multipart: Multipart,
-) -> Result<ParsedEmail, anyhow::Error> {
+) -> Result<String, anyhow::Error> {
 
     let mut raw_email = String::new();
     let mut field_count = 0;
@@ -35,12 +33,17 @@ pub async fn parse_email(
         return Err(anyhow::anyhow!("No email content found in multipart request"));
     }
 
-    info!("Successfully extracted email content ({} bytes)", raw_email.len());
+    Ok(raw_email)
+}
 
-    let raw = raw_email.clone();
+pub async fn parse_email(
+    sender: &str,
+    recipient: &str,
+    raw_email: &str,
+) -> Result<ParsedEmail, anyhow::Error> {
 
     let message = match MessageParser::default()
-        .parse(&raw_email) {
+        .parse(raw_email) {
         Some(message) => message,
         None => {
             error!("Failed to parse email content");
@@ -63,7 +66,6 @@ pub async fn parse_email(
 
 
     let mut email = ParsedEmail {
-        raw,
         message_id: message.message_id().unwrap_or_default().to_string(),
         sender: sender.to_string(),
         recipient: recipient.to_string(),

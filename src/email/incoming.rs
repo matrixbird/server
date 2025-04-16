@@ -15,7 +15,10 @@ use serde::Deserialize;
 
 use crate::utils::get_localpart;
 
-use crate::email::parse_email;
+use crate::email::{
+    parse_email,
+    get_raw_email,
+};
 
 #[derive(Debug, Deserialize)]
 pub struct IncomingEmail {
@@ -29,13 +32,22 @@ pub async fn incoming(
     Path(params): Path<(String, String)>,
     multipart: Multipart,
 ) -> Result<impl IntoResponse, StatusCode> {
+
     let (sender, recipient) = params;
     info!("Received HTTP email from {} to {}", sender, recipient);
+
+    let raw_email = match get_raw_email(multipart).await {
+        Ok(email) => email,
+        Err(_) => {
+            error!("Failed to get raw email");
+            return Err(StatusCode::BAD_REQUEST);
+        }
+    };
 
     let email = match parse_email(
         &sender,
         &recipient,
-        multipart
+        &raw_email
     ).await {
         Ok(email) => email,
         Err(_) => {
@@ -76,7 +88,7 @@ pub async fn incoming(
     tokio::spawn(async move {
         let _ = state_clone.storage.upload(
             &key,
-            email.raw.as_bytes(),
+            raw_email.as_bytes(),
         ).await.map_err(|e| {
             tracing::error!("Failed to upload email: {}", e);
         });
