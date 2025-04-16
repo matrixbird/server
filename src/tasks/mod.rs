@@ -413,7 +413,7 @@ pub async fn process_email(
         }
     };
 
-    let mut ev_id = String::new();
+    let ev_id: String;
 
     match state.appservice.send_message(ev_type.clone(), room_id.clone(), raw_event.clone()).await {
         Ok(event_id) => {
@@ -595,7 +595,7 @@ pub async fn process_failed_email(
         }
     };
 
-    let mut ev_id = String::new();
+    let ev_id: String;
 
     let res = state.appservice.send_message(ev_type, room_id, raw_event).await;
 

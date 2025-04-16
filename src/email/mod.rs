@@ -84,7 +84,7 @@ pub struct ParsedEmail {
     pub recipient: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub subject: Option<String>,
-    pub date: Option<DateTime<Utc>>,
+    pub date: DateTime<Utc>,
     pub content: Content,
 }
 

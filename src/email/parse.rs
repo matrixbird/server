@@ -1,5 +1,5 @@
 use mail_parser::MessageParser;
-use chrono::DateTime;
+use chrono::{DateTime, Utc};
 
 use axum::extract::Multipart;
 
@@ -65,7 +65,7 @@ pub async fn parse_email(
         sender: sender.to_string(),
         recipient: recipient.to_string(),
         subject: None,
-        date: None,
+        date: Utc::now(),
         content,
     };
 
@@ -75,10 +75,9 @@ pub async fn parse_email(
 
     if let Some(date) = message.date() {
         let ts = date.to_timestamp();
-        println!("Parsed date: {:#?}", ts);
-        let date = DateTime::from_timestamp(ts, 0);
-        println!("Parsed date: {:#?}", date);
-        email.date = date;
+        if let Some(date) = DateTime::from_timestamp(ts, 0) {
+            email.date = date;
+        }
     }
 
     Ok(email)
