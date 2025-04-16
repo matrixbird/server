@@ -41,9 +41,10 @@ impl Storage {
     pub async fn upload(
         &self,
         key: &str,
-        attachment: &[u8],
+        object: &[u8],
     ) -> Result<(), anyhow::Error> {
-        let body = ByteStream::from(Bytes::from(attachment.to_vec()));
+
+        let body = ByteStream::from(Bytes::from(object.to_vec()));
 
         self.client
             .put_object()
@@ -53,7 +54,7 @@ impl Storage {
             .send()
             .await?;
 
-        println!("Uploaded to {}/{}", &self.bucket, key);
+        tracing::info!("Uploaded to {}/{}", &self.bucket, key);
 
         Ok(())
     }

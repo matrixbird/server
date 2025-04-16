@@ -79,6 +79,7 @@ pub struct Attachment {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ParsedEmail {
+    pub raw: String,
     pub message_id: String,
     pub sender: String,
     pub recipient: String,

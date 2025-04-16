@@ -8,7 +8,7 @@ use axum::{
     http::StatusCode,
 };
 
-use crate::email::ParsedEmail;
+//use crate::email::ParsedEmail;
 
 use tracing::{info, error};
 use serde::Deserialize;
@@ -28,7 +28,7 @@ pub async fn incoming(
     State(state): State<Arc<AppState>>,
     Path(params): Path<(String, String)>,
     multipart: Multipart,
-) -> impl IntoResponse {
+) -> Result<impl IntoResponse, StatusCode> {
     let (sender, recipient) = params;
     info!("Received HTTP email from {} to {}", sender, recipient);
 
@@ -45,17 +45,6 @@ pub async fn incoming(
     };
 
     println!("Parsed email: {:#?}", email);
-
-    process_email(state.clone(), email).await
-
-}
-
-// Handle incoming emails from Postfix
-async fn process_email(
-    state: Arc<AppState>,
-    email: ParsedEmail,
-) -> Result<impl IntoResponse, StatusCode> {
-    info!("Received email from {} to {}", email.sender, email.recipient);
 
     if !state.config.email.incoming.enabled {
         tracing::info!("Email integration is disabled. Rejecting email.");
@@ -82,15 +71,21 @@ async fn process_email(
         return Err(StatusCode::FORBIDDEN);
     }
 
+    let state_clone = state.clone();
+    tokio::spawn(async move {
+        let _ = state_clone.storage.upload(
+            &email.message_id, 
+            email.raw.as_bytes(),
+        ).await.map_err(|e| {
+            tracing::error!("Failed to upload email: {}", e);
+        });
+    });
+        
+
     let mxid = format!("@{}:{}", user, state.config.matrix.server_name);
     tracing::info!("User exists: {}", mxid);
     tracing::info!("Processing email for MXID: {}", mxid);
 
-
-
     Ok(StatusCode::OK)
 }
-
-
-
 

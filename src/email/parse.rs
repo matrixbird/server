@@ -37,6 +37,8 @@ pub async fn parse_email(
 
     info!("Successfully extracted email content ({} bytes)", raw_email.len());
 
+    let raw = raw_email.clone();
+
     let message = match MessageParser::default()
         .parse(&raw_email) {
         Some(message) => message,
@@ -61,6 +63,7 @@ pub async fn parse_email(
 
 
     let mut email = ParsedEmail {
+        raw,
         message_id: message.message_id().unwrap_or_default().to_string(),
         sender: sender.to_string(),
         recipient: recipient.to_string(),
