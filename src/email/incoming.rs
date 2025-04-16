@@ -72,9 +72,10 @@ pub async fn incoming(
     }
 
     let state_clone = state.clone();
+    let key = format!("{}/{}/{}", recipient, email.date, email.message_id);
     tokio::spawn(async move {
         let _ = state_clone.storage.upload(
-            &email.message_id, 
+            &key,
             email.raw.as_bytes(),
         ).await.map_err(|e| {
             tracing::error!("Failed to upload email: {}", e);
