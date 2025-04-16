@@ -1,4 +1,12 @@
-use mail_parser::MessageParser;
+pub use crate::AppState;
+use std::sync::Arc;
+
+use mail_parser::{
+    Message,
+    MessageParser,
+    MimeHeaders,
+};
+
 use chrono::{DateTime, Utc};
 
 use axum::extract::Multipart;
@@ -40,20 +48,27 @@ pub async fn raw_email(
     Ok(raw_email)
 }
 
-pub async fn parse_email(
-    sender: &str,
-    recipient: &str,
+pub async fn parse_message(
     raw_email: &str,
-) -> Result<ParsedEmail, anyhow::Error> {
+) -> Result<Message, anyhow::Error> {
 
     let message = match MessageParser::default()
         .parse(raw_email) {
         Some(message) => message,
         None => {
-            error!("Failed to parse email content");
-            return Err(anyhow::anyhow!("Failed to parse email content"));
+            error!("Failed to parse message");
+            return Err(anyhow::anyhow!("Failed to parse message"));
         }
     };
+
+    Ok(message)
+}
+
+pub async fn parse_email<'x>(
+    sender: &str,
+    recipient: &str,
+    message: &Message<'x>,
+) -> Result<ParsedEmail, anyhow::Error> {
 
     let mut content = Content {
         text: None,
@@ -80,8 +95,10 @@ pub async fn parse_email(
         subject: None,
         date: Utc::now(),
         content,
+        attachments: None,
     };
 
+    // Parse the "to" addresses
     if let Some(to) = message.to() {
         let all = to.iter()
             .filter_map(|addr| {
@@ -101,10 +118,12 @@ pub async fn parse_email(
         .filter(|addr| addr.address().map_or(false, |address| address == sender))
         .and_then(|addr| addr.name().map(|n| n.to_string()));
 
+    // Parse subject
     if let Some(subject) = message.subject() {
         email.subject = Some(subject.to_string());
     }
 
+    // Parse date
     if let Some(date) = message.date() {
         let ts = date.to_timestamp();
         if let Some(date) = DateTime::from_timestamp(ts, 0) {
@@ -113,4 +132,30 @@ pub async fn parse_email(
     }
 
     Ok(email)
+}
+
+pub async fn process_attachments<'x>(
+    state: Arc<AppState>,
+    email: &ParsedEmail,
+    message: &Message<'x>,
+){
+    tracing::info!("Processing attachments for email: {}", email.message_id);
+
+    for attachment in message.attachments() {
+        if !attachment.is_message() {
+            let uploaded = state.storage.upload(
+                &format!("attachments/{}/{}", email.message_id, attachment.attachment_name()
+                    .unwrap_or("(no filename)")),
+                attachment.contents()
+            ).await;
+            match uploaded {
+                Ok(_) => {
+                    println!("Uploaded attachment: {}", attachment.attachment_name().unwrap_or("(no filename)"));
+                }
+                Err(e) => {
+                    error!("Failed to upload attachment: {}", e);
+                }
+            }
+        }
+    }
 }
