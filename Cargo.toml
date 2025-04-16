@@ -1,8 +1,12 @@
 [package]
 name = "matrixbird"
 version = "0.1.0"
+license = "AGPL-3.0-only"
 authors = ["ChurchOfTheSubgenius <mail@hummingbard.com>"]
-edition = "2021"
+edition = "2024"
+homepage = "https://matrixbird.com"
+repository = "https://github.com/matrixbird/server"
+
 
 [dependencies]
 ammonia = "4.0.0"
