@@ -90,7 +90,7 @@ pub async fn incoming(
     // Let's upload the email to object storage
     let state_clone = state.clone();
     let raw = raw_email.clone();
-    let key = format!("{}/{}/{}", recipient, email.date, email.message_id);
+    let key = format!("emails/{}/{}/{}", recipient, email.date, email.message_id);
     tokio::spawn(async move {
         let _ = state_clone.storage.upload(
             &key,
