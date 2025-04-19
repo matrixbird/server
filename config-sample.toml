@@ -32,6 +32,12 @@ federated = true
 enabled = true
 domain = "matrixbird.com"
 token = "secret"
+# Allow incoming emails from these domains
+# Leave empty to allow all
+whitelist = ["matrixbird.com", "matrixbird.net"]
+# Block incoming emails from these domains
+# Leave empty to allow all
+blacklist = ["gmail.com"]
 
 [email.outgoing]
 enabled = true
