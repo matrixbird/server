@@ -70,7 +70,8 @@ pub async fn incoming(
     // Early return for postmaster or invalid localpart
     let (user, tag) = match get_localpart(email.recipient.clone()) {
         Some(parts) => parts,
-        None => return Err(StatusCode::FORBIDDEN),
+        //None => return Err(StatusCode::FORBIDDEN),
+        None => return Err(StatusCode::OK),
     };
 
     if let Some(tag) = tag {
@@ -84,7 +85,8 @@ pub async fn incoming(
 
     if !exists {
         tracing::error!("User does not exist. Rejecting email.");
-        return Err(StatusCode::FORBIDDEN);
+        //return Err(StatusCode::FORBIDDEN);
+        return Err(StatusCode::OK);
     }
 
     // Let's upload the email to object storage
