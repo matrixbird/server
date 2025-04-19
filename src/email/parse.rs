@@ -159,12 +159,20 @@ pub async fn process_attachments<'x>(
                 &file_path,
                 attachment.contents()
             ).await;
+
             match uploaded {
                 Ok(_) => {
                     println!("Uploaded attachment: {}", attachment.attachment_name().unwrap_or("(no filename)"));
 
                     let mime_type = match attachment.content_type() {
-                        Some(mime) => mime.ctype().to_string(),
+                        Some(mime) => {
+                            let ctype = mime.ctype().to_string();
+                            if let Some(subtype) = mime.subtype() {
+                                format!("{}/{}", ctype, subtype)
+                            } else {
+                                ctype
+                            }
+                        }
                         None => "application/octet-stream".to_string(),
                     };
 
