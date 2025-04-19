@@ -178,11 +178,7 @@ impl AppService {
 
         let res = self.get_pending_email(room_id.clone()).await?;
 
-        let mut pending = match res {
-            Some(p) => p,
-            None => vec![]
-        };
-
+        let mut pending = res.unwrap_or_default();
 
         let state = EmailStateContent {
             event_id,
@@ -583,14 +579,14 @@ impl AppService {
 
         match res {
             Err(RumaClientError::Response(err)) => {
-                return Err(anyhow::anyhow!("Couldn't connect to homeserver: {}", err));
+                Err(anyhow::anyhow!("Couldn't connect to homeserver: {}", err))
             },
             Ok(_) => {
-                return Ok(false);
+                Ok(false)
             },
             Err(e) => {
                 tracing::error!("Error: {:#?}", e);
-                return Err(anyhow::anyhow!("Error: {}", e));
+                Err(anyhow::anyhow!("Error: {}", e))
             },
         }
 

@@ -273,7 +273,7 @@ async fn build_event(
     match (payload.content.html.clone(), payload.content.text.clone()) {
         (Some(html), Some(_)) | (Some(html), None) => {
 
-            if html.as_bytes().len() > MAX_EVENT_SIZE_BYTES {
+            if html.len() > MAX_EVENT_SIZE_BYTES {
                 if let Ok(uri) = state.appservice.upload_large_email(html).await {
                     email_body.content_uri = Some(uri);
                 } else {
@@ -284,7 +284,7 @@ async fn build_event(
             }
         },
         (None, Some(text)) => {
-            if text.as_bytes().len() > MAX_EVENT_SIZE_BYTES {
+            if text.len() > MAX_EVENT_SIZE_BYTES {
                 if let Ok(uri) = state.appservice.upload_large_email(text).await {
                     email_body.content_uri = Some(uri);
                 } else {
@@ -314,7 +314,7 @@ async fn build_event(
         from: payload.from.clone(),
         recipients: vec![mxid],
         subject: payload.subject.clone(),
-        date: payload.date.clone(),
+        date: payload.date,
         attachments: payload.attachments.clone(),
         m_relates_to: None,
     };
@@ -393,7 +393,7 @@ pub async fn process_email(
     let allow = rule == "allow";
     let reject = rule == "reject";
     //let pending = rule == "pending";
-    let none = rule == "";
+    let none = rule.is_empty();
 
     tracing::info!("Allowed to send to inbox?: {:?}", rule);
 
@@ -405,7 +405,7 @@ pub async fn process_email(
 
     let ev_type = MessageLikeEventType::from("matrixbird.email.standard");
     // Create and send the message
-    let raw_event = match build_event(state.clone(), &payload).await {
+    let raw_event = match build_event(state.clone(), payload).await {
         Ok(raw) => raw,
         Err(e) => {
             tracing::error!("Failed to create raw event: {}", e);
@@ -420,33 +420,31 @@ pub async fn process_email(
             tracing::info!("Message sent successfully - event ID: {}", event_id);
             ev_id = event_id.clone();
             // set pending state event
-            if none {
 
-                if let Ok(_) = state.appservice.set_pending_email(room_id.clone(), event_id.clone()).await{
-                    tracing::info!("Pending email set successfully");
-                }
-
-                /*
-                let pending = state.appservice.get_pending_email(room_id.clone()).await;
-                match pending {
-                    Ok(Some(mut pending)) => {
-                        pending.push(event_id.clone());
-                        if let Ok(_) = state.appservice.set_pending_email(room_id.clone(), pending).await{
-                            tracing::info!("Pending email set successfully");
-                        }
-                    },
-                    Ok(None) => {
-                        let pending = vec![event_id.clone()];
-                        if let Ok(_) = state.appservice.set_pending_email(room_id.clone(), pending).await{
-                            tracing::info!("Pending email set successfully");
-                        }
-                    },
-                    Err(e) => {
-                        tracing::error!("Failed to get pending emails: {}", e);
-                    }
-                }
-                */
+            if none && (state.appservice.set_pending_email(room_id.clone(), event_id.clone()).await).is_ok() {
+                tracing::info!("Pending email set successfully");
             }
+
+            /*
+            let pending = state.appservice.get_pending_email(room_id.clone()).await;
+            match pending {
+                Ok(Some(mut pending)) => {
+                    pending.push(event_id.clone());
+                    if let Ok(_) = state.appservice.set_pending_email(room_id.clone(), pending).await{
+                        tracing::info!("Pending email set successfully");
+                    }
+                },
+                Ok(None) => {
+                    let pending = vec![event_id.clone()];
+                    if let Ok(_) = state.appservice.set_pending_email(room_id.clone(), pending).await{
+                        tracing::info!("Pending email set successfully");
+                    }
+                },
+                Err(e) => {
+                    tracing::error!("Failed to get pending emails: {}", e);
+                }
+            }
+            */
 
             // set thread marker
             if allow {
@@ -581,7 +579,7 @@ pub async fn process_failed_email(
         from: payload.from.clone(),
         recipients: vec![mxid],
         subject: payload.subject.clone(),
-        date: payload.date.clone(),
+        date: payload.date,
         attachments: payload.attachments.clone(),
         m_relates_to: None,
     };
@@ -595,20 +593,19 @@ pub async fn process_failed_email(
         }
     };
 
-    let ev_id: String;
 
     let res = state.appservice.send_message(ev_type, room_id, raw_event).await;
 
-    match res {
+    let ev_id: String = match res {
         Ok(event_id) => {
             tracing::info!("Message sent successfully - event ID: {}", event_id);
-            ev_id = event_id.clone();
+            event_id.clone()
         },
         Err(e) => {
             tracing::error!("Failed to send Matrix message: {}", e);
             return;
         }
-    }
+    };
 
 
 
@@ -748,7 +745,6 @@ pub async fn send_welcome(
                 raw_event,
             ).await {
                 tracing::error!("Failed to send thread marker event: {}", e);
-                return;
             }
 
         };
@@ -927,7 +923,6 @@ pub async fn send_email_review(
         },
         Err(e) => {
             tracing::error!("Failed to send email review event: {}", e);
-            return;
         }
     }
 }

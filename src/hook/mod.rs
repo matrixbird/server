@@ -163,7 +163,7 @@ pub async fn hook(
 ) -> Json<HookResponse> {
 
 
-    if state.config.email.incoming.enabled == false {
+    if !state.config.email.incoming.enabled {
         tracing::info!("Email integration is disabled. Rejecting email.");
         return Json(HookResponse::reject())
     }
@@ -198,7 +198,7 @@ pub async fn hook(
         user.clone(),
     );
 
-    if let Ok(_) = client.send_request(av).await {
+    if (client.send_request(av).await).is_ok() {
         tracing::error!("User does not exist: {}", mxid);
 
         // we'll accept emails for non-existing users if they come from out postmark saas, in order
@@ -206,14 +206,14 @@ pub async fn hook(
         //
         if let (Some((localpart, _)), Ok(subdomain)) = (get_localpart(payload.envelope_from.clone()), get_email_subdomain(&payload.envelope_from)) {
 
-            if localpart == "pm_bounces".to_string() && subdomain == "pm-bounces" {
+            if localpart == *"pm_bounces" && subdomain == "pm-bounces" {
                 tracing::info!("Email from postmarkapp.com, accepting email for non-existing user");
                 return Json(HookResponse::accept())
             }
         }
 
 
-        return Json(HookResponse::reject())
+        Json(HookResponse::reject())
 
     } else {
         tracing::info!("User exists: {}", mxid);
@@ -222,7 +222,7 @@ pub async fn hook(
             tasks::process_email(state_clone, &payload, &user).await;
         });
         
-        return Json(HookResponse::accept())
+        Json(HookResponse::accept())
     }
 
 

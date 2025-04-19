@@ -69,10 +69,10 @@ pub async fn parse_message(
     Ok(message)
 }
 
-pub async fn parse_email<'x>(
+pub async fn parse_email(
     sender: &str,
     recipient: &str,
-    message: &Message<'x>,
+    message: &Message<'_>,
 ) -> Result<ParsedEmail, anyhow::Error> {
 
     let mut content = Content {
@@ -106,22 +106,20 @@ pub async fn parse_email<'x>(
 
     // Parse the "to" addresses
     if let Some(to) = message.to() {
-        let all = to.iter()
-            .filter_map(|addr| {
-                let address = addr.address().unwrap_or_default();
-                Some(Address {
-                    name: addr.name().map(|n| n.to_string()),
-                    address: address.to_string(),
-                })
-            })
-            .collect::<Vec<_>>();
-        email.to = all;
+        email.to = to.iter()
+        .map(|addr| {
+            Address {
+                name: addr.name().map(|n| n.to_string()),
+                address: addr.address().unwrap_or_default().to_string(),
+            }
+        })
+        .collect();
     };
 
     // Parse the "from" address, add name
     email.from.name = message.from()
         .and_then(|addrs| addrs.first())
-        .filter(|addr| addr.address().map_or(false, |address| address == sender))
+        .filter(|addr| addr.address() == Some(sender))
         .and_then(|addr| addr.name().map(|n| n.to_string()));
 
     // Parse subject
@@ -140,10 +138,10 @@ pub async fn parse_email<'x>(
     Ok(email)
 }
 
-pub async fn process_attachments<'x>(
+pub async fn process_attachments(
     state: Arc<AppState>,
     email: &mut ParsedEmail,
-    message: &Message<'x>,
+    message: &Message<'_>,
 ){
     tracing::info!("Processing attachments for email: {}", email.message_id);
 

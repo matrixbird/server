@@ -38,8 +38,6 @@ pub async fn signup(
 
     println!("signup request: {:?}", payload);
 
-    let mut invite_email: Option<String> = None;
-
     if !state.development_mode() &&
         state.config.features.authentication.require_invite_code {
 
@@ -52,7 +50,6 @@ pub async fn signup(
                     &code
                 ).await{
                     println!("Email is: {}", email);
-                    invite_email = Some(email);
                 } else if code == state.config.general.invite_code.clone().unwrap_or("".to_string()) {
                     tracing::info!("Using default invite code");
                 } else {
@@ -119,16 +116,14 @@ pub async fn signup(
     }
 
     // store access_token
-    match resp.access_token.clone() {
-        Some(token) => {
-            if let Ok(()) = state.db.access_tokens.add(
-                resp.user_id.clone().as_str(),
-                token.clone().as_str()
-            ).await{
-                tracing::info!("Stored access token.");
-            }
-        },
-        None => {}
+
+    if let Some(token) = resp.access_token.clone() {
+        if let Ok(()) = state.db.access_tokens.add(
+            resp.user_id.clone().as_str(),
+            token.clone().as_str()
+        ).await{
+            tracing::info!("Stored access token.");
+        }
     }
 
     if let Ok(Some(request)) = state.session.get_code_session(
@@ -143,27 +138,6 @@ pub async fn signup(
         }
 
     }
-
-    match invite_email {
-        Some(email) => {
-            if let Ok(()) = state.db.users.add_email(
-                resp.user_id.clone().as_str(),
-                &email
-            ).await{
-                println!("Added email to user");
-
-                if let Err(_) = state.db.invites.activate(
-                    &email,
-                    &payload.invite_code.clone().unwrap()
-                ).await{
-                    println!("Could not activate invite code");
-                }
-            }
-        },
-        None => {}
-    }
-
-
 
     let username = payload.username.clone();
     let access_token = resp.access_token.clone();

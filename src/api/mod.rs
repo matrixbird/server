@@ -251,44 +251,38 @@ pub async fn transactions(
         let membership = member_event.membership().to_owned();
         let sender = member_event.sender().to_owned();
 
+        if membership == MembershipState::Invite {
 
-        match membership {
-            MembershipState::Invite => {
+            // Auto-join rooms with user's access token
+            let invited_user = member_event.state_key().to_owned();
+            if invited_user != state.appservice.user_id() {
+                continue;
+            }
 
-                // Auto-join rooms with user's access token
-                let invited_user = member_event.state_key().to_owned();
-                if invited_user != state.appservice.user_id() {
-                    continue;
+            tracing::info!("Joining room: {}", room_id);
+
+            if let Ok(room_id) =  state.appservice.join_room(room_id.clone()).await{
+
+                if let Ok(room_type) = state.appservice.get_room_type(room_id.clone(), "INBOX".to_string()).await{
+                    if room_type == "INBOX" {
+
+                        let state_clone = state.clone();
+
+                        // Send welcome emails and messages
+                        tokio::spawn(async move {
+                            tasks::send_welcome(
+                                state_clone, 
+                                sender,
+                                room_id,
+                            ).await;
+                        });
+
+                    }
                 }
 
-                tracing::info!("Joining room: {}", room_id);
 
-                if let Ok(room_id) =  state.appservice.join_room(room_id.clone()).await{
+            };
 
-                    if let Ok(room_type) = state.appservice.get_room_type(room_id.clone(), "INBOX".to_string()).await{
-                        if room_type == "INBOX" {
-
-                            let state_clone = state.clone();
-
-                            // Send welcome emails and messages
-                            tokio::spawn(async move {
-                                tasks::send_welcome(
-                                    state_clone, 
-                                    sender,
-                                    room_id,
-                                ).await;
-                            });
-
-                        }
-                    }
-
-
-
-                };
-
-
-            }
-            _ => {}
         }
 
     }

@@ -25,7 +25,7 @@ pub async fn sync_joined_room(
     room_id: OwnedRoomId,
 ) -> Result<(), anyhow::Error> {
 
-    let access_token = state.db.access_tokens.get(&user_id.to_string())
+    let access_token = state.db.access_tokens.get(user_id.as_ref())
         .await?;
 
     let client = ruma::Client::builder()
