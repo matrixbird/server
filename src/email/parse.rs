@@ -13,9 +13,12 @@ use axum::extract::Multipart;
 
 use tracing::{info, error};
 
+use crate::utils::generate_string;
+
 use crate::email::{
     ParsedEmail, 
     Address,
+    Attachment,
     Content
 };
 
@@ -137,21 +140,43 @@ pub async fn parse_email<'x>(
 
 pub async fn process_attachments<'x>(
     state: Arc<AppState>,
-    email: &ParsedEmail,
+    email: &mut ParsedEmail,
     message: &Message<'x>,
 ){
     tracing::info!("Processing attachments for email: {}", email.message_id);
 
     for attachment in message.attachments() {
         if !attachment.is_message() {
+
+            let def = generate_string(16);
+
+            let file_name = attachment.attachment_name()
+                .unwrap_or(&def);
+
+            let file_path = format!("attachments/{}/{}", email.message_id, file_name);
+
             let uploaded = state.storage.upload(
-                &format!("attachments/{}/{}", email.message_id, attachment.attachment_name()
-                    .unwrap_or("(no filename)")),
+                &file_path,
                 attachment.contents()
             ).await;
             match uploaded {
                 Ok(_) => {
                     println!("Uploaded attachment: {}", attachment.attachment_name().unwrap_or("(no filename)"));
+
+                    let mime_type = match attachment.content_type() {
+                        Some(mime) => mime.ctype().to_string(),
+                        None => "application/octet-stream".to_string(),
+                    };
+
+                    let item = Attachment{
+                        filename: file_name.to_string(),
+                        path: file_path,
+                        mime_type,
+                    };
+
+                    email.attachments.get_or_insert_with(Vec::new)
+                        .push(item);
+
                 }
                 Err(e) => {
                     error!("Failed to upload attachment: {}", e);

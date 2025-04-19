@@ -159,7 +159,7 @@ impl EmailService {
         Ok(())
     }
 
-    pub fn allowed(&self, email: &str) -> bool {
+    pub fn domain_allowed(&self, email: &str) -> bool {
         if let Some(domains) = &self.domains {
             if let Some(allowed) = &domains.allow {
                 for allowed_domain in allowed {

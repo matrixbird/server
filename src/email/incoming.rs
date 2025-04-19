@@ -28,13 +28,11 @@ pub async fn incoming(
 ) -> Result<impl IntoResponse, StatusCode> {
 
     let (sender, recipient) = params;
-    info!("Received HTTP email from {} to {}", sender, recipient);
+    info!("Received email from {} to {}", sender, recipient);
 
-    if !state.email.allowed(&sender) {
+    // Silently ignore the email if domain is not allowed
+    if !state.email.domain_allowed(&sender) {
         error!("Sender domain is not allowed: {}", sender);
-        error!("Sender domain is not allowed: {}", sender);
-        error!("Sender domain is not allowed: {}", sender);
-        // Silently ignore the email
         return Err(StatusCode::OK);
     }
 
@@ -56,7 +54,7 @@ pub async fn incoming(
     };
 
     // Build ParsedEmail
-    let email = match parse_email(
+    let mut email = match parse_email(
         &sender,
         &recipient,
         &message,
@@ -111,7 +109,8 @@ pub async fn incoming(
     });
 
     if message.attachment_count() > 0 {
-        process_attachments(state.clone(), &email, &message).await;
+        process_attachments(state.clone(), &mut email, &message).await;
+        println!("Attachments: {:#?}", email.attachments);
     };
         
 

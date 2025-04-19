@@ -71,10 +71,6 @@ pub struct Attachment {
     pub filename: String,
     pub path: String,
     pub mime_type: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub content_id: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub encoding: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
