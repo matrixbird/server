@@ -56,6 +56,7 @@ uuid = { version = "1.11.0", features = ["v4"] }
 
 [profile.dev]
 debug = 0
+strip = "debuginfo"
 
 [lints.rust]
 unexpected_cfgs = { level = "allow", check-cfg = [

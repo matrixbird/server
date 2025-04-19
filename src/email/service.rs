@@ -1,4 +1,4 @@
-use crate::config::{Config, SMTP};
+use crate::config::{Config, SMTP, EmailDomains};
 
 use lettre::{
     message::header::{Header, HeaderName, HeaderValue},
@@ -57,13 +57,14 @@ impl Header for InReplyTo {
 use crate::templates::EmailTemplates;
 
 #[derive(Debug, Clone)]
-pub struct MailService {
+pub struct EmailService {
     transport: SmtpTransport,
     templates: EmailTemplates,
     smtp: SMTP,
+    domains: Option<EmailDomains>,
 }
 
-impl MailService {
+impl EmailService {
     pub fn new(config: &Config, templates: EmailTemplates) -> Self {
 
         let smtp = config.smtp.clone();
@@ -83,6 +84,7 @@ impl MailService {
             transport,
             templates,
             smtp,
+            domains: config.email.domains.clone(),
         }
     }
 
@@ -156,6 +158,30 @@ impl MailService {
 
         Ok(())
     }
+
+    pub fn allowed(&self, email: &str) -> bool {
+        if let Some(domains) = &self.domains {
+            if let Some(allowed) = &domains.allow {
+                for allowed_domain in allowed {
+                    if email.ends_with(allowed_domain) {
+                        tracing::info!("Email domain is allowed: {}", email);
+                        return true;
+                    }
+                }
+            }
+            if let Some(reject) = &domains.reject {
+                for reject_domain in reject {
+                    if email.ends_with(reject_domain) {
+                        tracing::info!("Email domain is rejected: {}", email);
+                        return false;
+                    }
+                }
+            }
+        }
+        tracing::info!("Email domain is allowed by default: {}", email);
+        true
+    }
+
 }
 
 

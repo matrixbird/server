@@ -37,7 +37,7 @@ pub struct AppState {
     pub transaction_store: ping::TransactionStore,
     pub cache: cache::Cache,
     pub session: session::SessionStore,
-    pub email: email::MailService,
+    pub email: email::EmailService,
     pub email_providers: email::EmailProviders,
     pub templates: templates::EmailTemplates,
     pub keys: crypto::Keys,
@@ -64,7 +64,7 @@ impl AppState {
 
         let templates = templates::EmailTemplates::new()?;
 
-        let email = email::MailService::new(&config, templates.clone());
+        let email = email::EmailService::new(&config, templates.clone());
 
         let providers = email::EmailProviders::new("data/providers.json")?;
 

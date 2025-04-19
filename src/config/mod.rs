@@ -56,6 +56,7 @@ pub struct Email {
     pub incoming: IncomingEmail,
     pub outgoing: OutgoingEmail,
     pub settings: EmailSettings,
+    pub domains: Option<EmailDomains>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -63,8 +64,6 @@ pub struct IncomingEmail {
     pub enabled: bool,
     pub domain: String,
     pub token: String,
-    pub allow_domains: Option<Vec<String>>,
-    pub reject_domains: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -72,8 +71,12 @@ pub struct OutgoingEmail {
     pub enabled: bool,
     pub domain: String,
     pub endpoint: String,
-    pub allow_domains: Option<Vec<String>>,
-    pub reject_domains: Option<Vec<String>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EmailDomains {
+    pub allow: Option<Vec<String>>,
+    pub reject: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -30,6 +30,14 @@ pub async fn incoming(
     let (sender, recipient) = params;
     info!("Received HTTP email from {} to {}", sender, recipient);
 
+    if !state.email.allowed(&sender) {
+        error!("Sender domain is not allowed: {}", sender);
+        error!("Sender domain is not allowed: {}", sender);
+        error!("Sender domain is not allowed: {}", sender);
+        // Silently ignore the email
+        return Err(StatusCode::OK);
+    }
+
     // Get raw email from multipart
     let raw_email = match raw_email(multipart).await {
         Ok(email) => email,
