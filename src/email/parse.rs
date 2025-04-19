@@ -13,6 +13,8 @@ use axum::extract::Multipart;
 
 use tracing::{info, error};
 
+use uuid::Uuid;
+
 use crate::utils::generate_string;
 
 use crate::email::{
@@ -150,10 +152,12 @@ pub async fn process_attachments<'x>(
 
             let def = generate_string(16);
 
+            let id = Uuid::new_v4();
+
             let file_name = attachment.attachment_name()
                 .unwrap_or(&def);
 
-            let file_path = format!("attachments/{}/{}", email.message_id, file_name);
+            let file_path = format!("attachments/{}/{}", id, file_name);
 
             let uploaded = state.storage.upload(
                 &file_path,
@@ -162,7 +166,7 @@ pub async fn process_attachments<'x>(
 
             match uploaded {
                 Ok(_) => {
-                    println!("Uploaded attachment: {}", attachment.attachment_name().unwrap_or("(no filename)"));
+                    println!("Uploaded attachment: {}", file_name);
 
                     let mime_type = match attachment.content_type() {
                         Some(mime) => {
