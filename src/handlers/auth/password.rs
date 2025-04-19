@@ -64,7 +64,7 @@ pub async fn password_reset(
         payload.client_secret.clone()
     ).await {
 
-        let sent = state.mail.send(
+        let sent = state.email.send(
             &email,
             "Verification Code",
             "verification_code.html",

@@ -356,7 +356,7 @@ async fn process_standard_email(state: Arc<AppState>, event: Value) {
     let text = event["content"]["body"]["text"].as_str().unwrap_or_default();
 
     match state
-        .mail
+        .email
         .send_reply(
             message_id,
             reply_to,

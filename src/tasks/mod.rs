@@ -683,7 +683,7 @@ pub async fn send_welcome(
 
         let to = format!("{}@{}", local_part, state.config.email.incoming.domain);
 
-        let sent = state.mail.send(
+        let sent = state.email.send(
             &to,
             "Hello from Matrixbird",
             "welcome_email.html",

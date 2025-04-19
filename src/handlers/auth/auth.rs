@@ -108,7 +108,7 @@ pub async fn verify_email(
     ).await {
 
 
-        let sent = state.mail.send(
+        let sent = state.email.send(
             &payload.email,
             "Verification Code",
             "verification_code.html",
