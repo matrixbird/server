@@ -1,6 +1,7 @@
 mod users;
 mod emails;
 mod events;
+pub use events::StoreEventRequest;
 mod invites;
 mod access_tokens;
 

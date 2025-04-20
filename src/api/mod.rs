@@ -22,6 +22,8 @@ use crate::tasks;
 
 use crate::utils::replace_email_domain;
 
+use crate::db::StoreEventRequest;
+
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct EmailReviewEvent {
     pub event_id: String,
@@ -90,17 +92,18 @@ async fn store_event_to_db(
 
     match (event_id, room_id, sender, event_type) {
         (Some(event_id), Some(room_id), Some(sender), Some(event_type)) => {
-            if let Err(e) =  state.db.events.store(
+            if let Err(e) =  state.db.events.store(StoreEventRequest{
                 event_id,
                 room_id,
                 event_type,
                 sender,
-                event.clone(),
                 recipients,
                 relates_to_event_id,
-                relates_to_in_reply_to,
-                relates_to_rel_type,
-                message_id
+                in_reply_to: relates_to_in_reply_to,
+                rel_type: relates_to_rel_type,
+                message_id,
+                json: event.clone(),
+            }
             ).await{
                 tracing::warn!("Failed to store event: {:#?}", e);
             }
