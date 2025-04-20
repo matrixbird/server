@@ -30,13 +30,14 @@ use crate::utils::{get_localpart, get_mxid_localpart};
 
 use crate::AppState;
 use crate::hook::{
-    EmailRequest,
     EmailBody,
     EmailContent,
     ReviewEmailContent,
     RelatesTo,
     ThreadMarkerContent
 };
+
+use crate::email::ParsedEmail;
 
 use crate::api::EmailReviewEvent;
 
@@ -243,7 +244,7 @@ pub async fn build_user_room(
 
 async fn build_event(
     state: Arc<AppState>,
-    payload: &EmailRequest,
+    payload: &ParsedEmail,
 ) -> Result<ruma::serde::Raw<AnyMessageLikeEventContent>, anyhow::Error>
 {
 
@@ -297,7 +298,7 @@ async fn build_event(
         _ => {}
     }
 
-    let local_part = match get_localpart(payload.envelope_to.clone()) {
+    let local_part = match get_localpart(payload.recipient.clone()) {
         Some(parts) => parts.0,
         None => {
             tracing::error!("Failed to get localpart from email: {:?}", payload);
@@ -314,7 +315,7 @@ async fn build_event(
         from: payload.from.clone(),
         recipients: vec![mxid],
         subject: payload.subject.clone(),
-        date: payload.date,
+        date: payload.date.clone(),
         attachments: payload.attachments.clone(),
         m_relates_to: None,
     };
@@ -333,16 +334,16 @@ async fn build_event(
 
 pub async fn process_email(
     state: Arc<AppState>,
-    payload: &EmailRequest,
+    payload: ParsedEmail,
     user: &str,
 ) {
 
-    let store_result = match serde_json::to_value(payload) {
+    let store_result = match serde_json::to_value(payload.clone()) {
         Ok(email_json) => {
             state.db.emails.store(
                 payload.message_id.as_str(),
-                payload.envelope_from.as_str(),
-                payload.envelope_to.as_str(),
+                payload.sender.as_str(),
+                payload.recipient.as_str(),
                 email_json,
             ).await
         }
@@ -380,7 +381,7 @@ pub async fn process_email(
         }
     };
 
-    let address = payload.envelope_from.clone();
+    let address = payload.sender.clone();
 
     let rule = match state.appservice.get_email_screen_rule(room_id.clone(), address.clone()).await {
         Ok(rule) => rule,
@@ -405,7 +406,7 @@ pub async fn process_email(
 
     let ev_type = MessageLikeEventType::from("matrixbird.email.standard");
     // Create and send the message
-    let raw_event = match build_event(state.clone(), payload).await {
+    let raw_event = match build_event(state.clone(), &payload).await {
         Ok(raw) => raw,
         Err(e) => {
             tracing::error!("Failed to create raw event: {}", e);
@@ -510,7 +511,7 @@ pub async fn process_failed_emails(state: Arc<AppState>) {
             println!("Processing email for user: {}", user);
 
             // deserialize the email json to EmailRequest 
-            let payload: EmailRequest = match serde_json::from_value(email.email_json.clone()) {
+            let payload: ParsedEmail = match serde_json::from_value(email.email_json.clone()) {
                 Ok(email) => email,
                 Err(e) => {
                     tracing::error!("Failed to deserialize email: {}", e);
@@ -520,7 +521,7 @@ pub async fn process_failed_emails(state: Arc<AppState>) {
 
             let state_clone = state.clone();
             tokio::spawn(async move {
-                process_failed_email(state_clone, &payload, &user).await;
+                process_failed_email(state_clone, payload, &user).await;
             });
 
             sleep(Duration::from_secs(1)).await;
@@ -532,7 +533,7 @@ pub async fn process_failed_emails(state: Arc<AppState>) {
 
 pub async fn process_failed_email(
     state: Arc<AppState>,
-    payload: &EmailRequest,
+    payload: ParsedEmail,
     user: &str,
 ) {
 

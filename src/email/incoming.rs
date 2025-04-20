@@ -21,6 +21,8 @@ use crate::email::{
     process_attachments,
 };
 
+use crate::tasks;
+
 pub async fn incoming(
     State(state): State<Arc<AppState>>,
     Path(params): Path<(String, String)>,
@@ -115,9 +117,10 @@ pub async fn incoming(
     };
         
 
-    let mxid = format!("@{}:{}", user, state.config.matrix.server_name);
-    tracing::info!("User exists: {}", mxid);
-    tracing::info!("Processing email for MXID: {}", mxid);
+    let state_clone = state.clone();
+    tokio::spawn(async move {
+        tasks::process_email(state_clone, email, &user).await;
+    });
 
     Ok(StatusCode::OK)
 }

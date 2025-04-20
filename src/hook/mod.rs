@@ -15,7 +15,11 @@ use crate::AppState;
 
 use crate::utils::{get_localpart, get_email_subdomain};
 
-use crate::tasks;
+use crate::email::{
+    Address,
+    Attachment,
+};
+
 
 use ruma::
     api::client::account::get_username_availability;
@@ -37,7 +41,7 @@ pub struct EmailContent {
     pub from: Address,
     pub recipients: Vec<String>,
     pub subject: Option<String>,
-    pub date: DateTime<Utc>,
+    pub date: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub attachments: Option<Vec<Attachment>>,
     #[serde(rename = "m.relates_to")]
@@ -104,12 +108,6 @@ pub struct EmailRequest {
     pub return_path: Option<String>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Address {
-    pub address: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
-}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Header {
@@ -123,17 +121,6 @@ pub struct Content {
     pub text: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub html: Option<String>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Attachment {
-    pub filename: String,
-    pub path: String,
-    pub mime_type: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub content_id: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub encoding: Option<String>,
 }
 
 
@@ -217,10 +204,12 @@ pub async fn hook(
 
     } else {
         tracing::info!("User exists: {}", mxid);
+        /*
         let state_clone = state.clone();
         tokio::spawn(async move {
             tasks::process_email(state_clone, &payload, &user).await;
         });
+        */
         
         Json(HookResponse::accept())
     }

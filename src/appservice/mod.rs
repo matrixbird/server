@@ -50,7 +50,10 @@ use anyhow;
 
 use crate::tasks::{EmailStateContent, PendingEmailsContent};
 
-use crate::hook::{EmailBody, EmailContent, Address, RelatesTo};
+use crate::hook::{EmailBody, EmailContent, RelatesTo};
+
+use crate::email::Address;
+
 
 pub type HttpClient = ruma::client::http_client::HyperNativeTls;
 
@@ -502,7 +505,7 @@ impl AppService {
             from,
             recipients: vec![user_id.to_string()],
             subject: Some(subject),
-            date,
+            date: date.to_rfc3339(),
             attachments: None,
             m_relates_to: None,
         };
