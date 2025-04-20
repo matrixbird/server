@@ -36,6 +36,34 @@ pub async fn incoming(
         return Err(StatusCode::OK);
     }
 
+
+    if !state.config.email.incoming.enabled {
+        tracing::info!("Email integration is disabled. Rejecting email.");
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    // Early return for postmaster or invalid localpart
+    let (user, tag) = match get_localpart(recipient.clone()) {
+        Some(parts) => parts,
+        //None => return Err(StatusCode::FORBIDDEN),
+        None => return Err(StatusCode::OK),
+    };
+
+    if let Some(tag) = tag {
+        tracing::debug!("Email tag: {}", tag);
+    }
+
+    let exists = state.appservice.user_exists(&user).await.map_err(|e| {
+        tracing::error!("Failed to check user existence: {}", e);
+        StatusCode::SERVICE_UNAVAILABLE
+    })?;
+
+    if !exists {
+        tracing::error!("User does not exist. Rejecting email.");
+        //return Err(StatusCode::FORBIDDEN);
+        return Err(StatusCode::OK);
+    }
+
     // Get raw email from multipart
     let raw_email = match raw_email(multipart).await {
         Ok(email) => email,
@@ -67,33 +95,6 @@ pub async fn incoming(
     };
 
     println!("Parsed email: {:#?}", email);
-
-    if !state.config.email.incoming.enabled {
-        tracing::info!("Email integration is disabled. Rejecting email.");
-        return Err(StatusCode::FORBIDDEN);
-    }
-
-    // Early return for postmaster or invalid localpart
-    let (user, tag) = match get_localpart(email.recipient.clone()) {
-        Some(parts) => parts,
-        //None => return Err(StatusCode::FORBIDDEN),
-        None => return Err(StatusCode::OK),
-    };
-
-    if let Some(tag) = tag {
-        tracing::debug!("Email tag: {}", tag);
-    }
-
-    let exists = state.appservice.user_exists(&user).await.map_err(|e| {
-        tracing::error!("Failed to check user existence: {}", e);
-        StatusCode::SERVICE_UNAVAILABLE
-    })?;
-
-    if !exists {
-        tracing::error!("User does not exist. Rejecting email.");
-        //return Err(StatusCode::FORBIDDEN);
-        return Err(StatusCode::OK);
-    }
 
     // Let's upload the email to object storage
     let state_clone = state.clone();
