@@ -244,20 +244,20 @@ pub async fn build_user_room(
 
 async fn build_event(
     state: Arc<AppState>,
-    payload: &ParsedEmail,
+    email: &ParsedEmail,
 ) -> Result<ruma::serde::Raw<AnyMessageLikeEventContent>, anyhow::Error>
 {
 
     /*
-    let safe_html = match payload.content.html.clone() {
+    let safe_html = match email.content.html.clone() {
     Some(html) => clean(&html),
     None => "".to_string(),
     };
 
 
     let email_body = EmailBody {
-        text: payload.content.text.clone(),
-        html: payload.content.html.clone(),
+        text: email.content.text.clone(),
+        html: email.content.html.clone(),
         //html: Some(safe_html),
     };
 
@@ -271,7 +271,7 @@ async fn build_event(
         content_uri: None,
     };
 
-    match (payload.content.html.clone(), payload.content.text.clone()) {
+    match (email.content.html.clone(), email.content.text.clone()) {
         (Some(html), Some(_)) | (Some(html), None) => {
 
             if html.len() > MAX_EVENT_SIZE_BYTES {
@@ -298,10 +298,10 @@ async fn build_event(
         _ => {}
     }
 
-    let local_part = match get_localpart(payload.recipient.clone()) {
+    let local_part = match get_localpart(email.recipient.clone()) {
         Some(parts) => parts.0,
         None => {
-            tracing::error!("Failed to get localpart from email: {:?}", payload);
+            tracing::error!("Failed to get localpart from email: {:?}", email);
             return Err(anyhow::Error::msg("Failed to get localpart from email"));
         }
     };
@@ -310,13 +310,13 @@ async fn build_event(
     let mxid = format!("@{}:{}", local_part, server_name);
 
     let email_content = EmailContent {
-        message_id: payload.message_id.clone(),
+        message_id: email.message_id.clone(),
         body: email_body,
-        from: payload.from.clone(),
+        from: email.from.clone(),
         recipients: vec![mxid],
-        subject: payload.subject.clone(),
-        date: payload.date.clone(),
-        attachments: payload.attachments.clone(),
+        subject: email.subject.clone(),
+        date: email.date.clone(),
+        attachments: email.attachments.clone(),
         m_relates_to: None,
     };
 
@@ -334,16 +334,16 @@ async fn build_event(
 
 pub async fn process_email(
     state: Arc<AppState>,
-    payload: ParsedEmail,
+    email: ParsedEmail,
     user: &str,
 ) {
 
-    let store_result = match serde_json::to_value(payload.clone()) {
+    let store_result = match serde_json::to_value(email.clone()) {
         Ok(email_json) => {
             state.db.emails.store(
-                payload.message_id.as_str(),
-                payload.sender.as_str(),
-                payload.recipient.as_str(),
+                email.message_id.as_str(),
+                email.sender.as_str(),
+                email.recipient.as_str(),
                 email_json,
             ).await
         }
@@ -381,7 +381,7 @@ pub async fn process_email(
         }
     };
 
-    let address = payload.sender.clone();
+    let address = email.sender.clone();
 
     let rule = match state.appservice.get_email_screen_rule(room_id.clone(), address.clone()).await {
         Ok(rule) => rule,
@@ -406,7 +406,7 @@ pub async fn process_email(
 
     let ev_type = MessageLikeEventType::from("matrixbird.email.standard");
     // Create and send the message
-    let raw_event = match build_event(state.clone(), &payload).await {
+    let raw_event = match build_event(state.clone(), &email).await {
         Ok(raw) => raw,
         Err(e) => {
             tracing::error!("Failed to create raw event: {}", e);
@@ -487,7 +487,7 @@ pub async fn process_email(
     }
 
 
-    if let Err(e) = state.db.emails.set_processed(&payload.message_id, ev_id).await {
+    if let Err(e) = state.db.emails.set_processed(&email.message_id, ev_id).await {
         tracing::error!("Failed to mark email as processed: {}", e);
         return;
     }
@@ -511,7 +511,7 @@ pub async fn process_failed_emails(state: Arc<AppState>) {
             println!("Processing email for user: {}", user);
 
             // deserialize the email json to EmailRequest 
-            let payload: ParsedEmail = match serde_json::from_value(email.email_json.clone()) {
+            let email: ParsedEmail = match serde_json::from_value(email.email_json.clone()) {
                 Ok(email) => email,
                 Err(e) => {
                     tracing::error!("Failed to deserialize email: {}", e);
@@ -521,7 +521,7 @@ pub async fn process_failed_emails(state: Arc<AppState>) {
 
             let state_clone = state.clone();
             tokio::spawn(async move {
-                process_failed_email(state_clone, payload, &user).await;
+                process_failed_email(state_clone, email, &user).await;
             });
 
             sleep(Duration::from_secs(1)).await;
@@ -533,7 +533,7 @@ pub async fn process_failed_emails(state: Arc<AppState>) {
 
 pub async fn process_failed_email(
     state: Arc<AppState>,
-    payload: ParsedEmail,
+    email: ParsedEmail,
     user: &str,
 ) {
 
@@ -561,27 +561,27 @@ pub async fn process_failed_email(
     let ev_type = MessageLikeEventType::from("matrixbird.email.standard");
 
     /*
-    let safe_html = match payload.content.html.clone() {
+    let safe_html = match email.content.html.clone() {
     Some(html) => clean(&html),
     None => "".to_string(),
     };
     */
 
     let email_body = EmailBody {
-        text: payload.content.text.clone(),
-        html: payload.content.html.clone(),
+        text: email.content.text.clone(),
+        html: email.content.html.clone(),
         content_uri: None,
         //html: Some(safe_html),
     };
 
     let email_content = EmailContent {
-        message_id: payload.message_id.clone(),
+        message_id: email.message_id.clone(),
         body: email_body,
-        from: payload.from.clone(),
+        from: email.from.clone(),
         recipients: vec![mxid],
-        subject: payload.subject.clone(),
-        date: payload.date,
-        attachments: payload.attachments.clone(),
+        subject: email.subject.clone(),
+        date: email.date,
+        attachments: email.attachments.clone(),
         m_relates_to: None,
     };
 
@@ -610,7 +610,7 @@ pub async fn process_failed_email(
 
 
 
-    if let Err(e) = state.db.emails.set_processed(&payload.message_id, ev_id).await {
+    if let Err(e) = state.db.emails.set_processed(&email.message_id, ev_id).await {
         tracing::error!("Failed to mark email as processed: {}", e);
         return;
     }
