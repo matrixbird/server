@@ -2,7 +2,6 @@ pub mod config;
 pub mod appservice;
 pub mod db;
 pub mod server;
-pub mod hook;
 pub mod ping;
 pub mod crypto;
 pub mod api;

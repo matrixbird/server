@@ -32,7 +32,6 @@ use middleware::{
 };
 
 use crate::handlers::ping::ping;
-use crate::hook::hook;
 
 use crate::handlers::auth::{
     login, 
@@ -134,7 +133,6 @@ impl Server {
 
 
         let base_routes = Router::new()
-            .route("/hook", post(hook))
             .route("/health", get(health))
             .route("/features", get(features))
             .route("/features/authentication", get(authentication_features))
