@@ -11,38 +11,22 @@ mod parse;
 pub use parse::*;
 
 use serde::{Deserialize, Serialize};
-use chrono::{DateTime, Utc};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Email {
+pub struct ParsedEmail {
     pub message_id: String,
-    pub envelope_from: String,
-    pub envelope_to: String,
+    pub sender: String,
+    pub recipient: String,
+    pub from: Address,
+    pub to: Vec<Address>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub in_reply_to: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub references: Option<String>,
-    pub from: Address,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub sender: Option<Address>,
-    pub to: Vec<Address>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub cc: Option<Vec<Address>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub bcc: Option<Vec<Address>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub reply_to: Option<Vec<Address>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub subject: Option<String>,
-    pub date: DateTime<Utc>,
-    pub headers: Vec<Header>,
+    pub date: String,
     pub content: Content,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub attachments: Option<Vec<Attachment>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub delivered_to: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub return_path: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -50,12 +34,6 @@ pub struct Address {
     pub address: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Header {
-    pub key: String,
-    pub value: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -73,20 +51,52 @@ pub struct Attachment {
     pub mime_type: String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct ParsedEmail {
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct ThreadMarkerContent {
+    pub msgtype: String,
+    #[serde(rename = "m.relates_to")]
+    pub m_relates_to: RelatesTo,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct EmailContent {
     pub message_id: String,
-    pub sender: String,
-    pub recipient: String,
+    pub body: EmailBody,
     pub from: Address,
-    pub to: Vec<Address>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub in_reply_to: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    pub recipients: Vec<String>,
     pub subject: Option<String>,
     pub date: String,
-    pub content: Content,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub attachments: Option<Vec<Attachment>>,
+    #[serde(rename = "m.relates_to")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub m_relates_to: Option<RelatesTo>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct EmailBody {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub text: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub html: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub content_uri: Option<String>,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct RelatesTo {
+    pub event_id: Option<String>,
+    #[serde(rename = "m.in_reply_to")]
+    pub m_in_reply_to: Option<String>,
+    pub rel_type: Option<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct ReviewEmailContent {
+    pub body: EmailBody,
+    pub from: String,
+    pub subject: Option<String>,
+    pub to: Vec<String>,
+    pub invite_room_id: String,
 }
 

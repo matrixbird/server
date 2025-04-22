@@ -33,7 +33,6 @@ pub struct ThreadMarkerContent {
     pub m_relates_to: RelatesTo,
 }
 
-
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct EmailContent {
     pub message_id: String,

@@ -48,11 +48,17 @@ use uuid::Uuid;
 
 use anyhow;
 
-use crate::tasks::{EmailStateContent, PendingEmailsContent};
+use crate::tasks::{
+    EmailStateContent, 
+    PendingEmailsContent
+};
 
-use crate::hook::{EmailBody, EmailContent, RelatesTo};
-
-use crate::email::Address;
+use crate::email::{
+    EmailBody, 
+    EmailContent, 
+    RelatesTo, 
+    Address,
+};
 
 
 pub type HttpClient = ruma::client::http_client::HyperNativeTls;

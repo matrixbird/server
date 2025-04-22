@@ -29,15 +29,15 @@ use serde::{Serialize, Deserialize};
 use crate::utils::{get_localpart, get_mxid_localpart};
 
 use crate::AppState;
-use crate::hook::{
+
+use crate::email::{
+    ParsedEmail,
     EmailBody,
     EmailContent,
     ReviewEmailContent,
     RelatesTo,
     ThreadMarkerContent
 };
-
-use crate::email::ParsedEmail;
 
 use crate::api::EmailReviewEvent;
 
