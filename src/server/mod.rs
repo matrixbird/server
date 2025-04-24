@@ -1,3 +1,4 @@
+pub mod lmtp;
 pub mod middleware;
 
 use axum::{
@@ -84,7 +85,7 @@ impl Server {
             .allow_origin(Any)
             .allow_headers(vec![CONTENT_TYPE]);
 
-        layer = match &config.server.allow_origin {
+        layer = match &config.server.http.allow_origin {
             Some(origins) if !origins.is_empty() && 
             !origins.contains(&"".to_string()) &&
             !origins.contains(&"*".to_string()) => {
@@ -100,7 +101,7 @@ impl Server {
     pub async fn run(&self) -> Result<(), anyhow::Error> {
         let ping_state = self.state.clone();
 
-        let addr = format!("0.0.0.0:{}", &self.state.config.server.port);
+        let addr = format!("{}:{}", &self.state.config.server.http.host, &self.state.config.server.http.port);
 
         let service_routes = Router::new()
             .route("/_matrix/app/v1/ping", post(ping))
@@ -187,7 +188,17 @@ impl Server {
             }
         });
 
+        tokio::spawn(async {
+            let _ = lmtp::start()
+                .await
+                .unwrap_or_else(|e| {
+                    tracing::error!("Failed to start LMTP server: {}", e);
+                    std::process::exit(1);
+                });
+        });
+
         if let Ok(listener) = tokio::net::TcpListener::bind(addr.clone()).await {
+            tracing::info!("Listening on {}", addr);
             axum::serve(listener, ServiceExt::<Request>::into_make_service(app)).await?;
         } else {
             tracing::error!("Failed to bind to address: {}", addr);

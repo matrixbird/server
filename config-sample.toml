@@ -2,7 +2,7 @@
 mode = "development"
 invite_code = ""
 
-[server]
+[server.http]
 port = 8989
 allow_origin = [""]
 

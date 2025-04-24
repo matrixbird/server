@@ -1,5 +1,5 @@
 use serde::{Serialize, Deserialize};
-use std::{fs, process};
+use std::fs;
 use std::path::Path;
 
 #[derive(Debug, Default)]
@@ -61,7 +61,7 @@ impl ConfigBuilder {
 
     pub fn with_port(mut self, port: u16) -> Self {
         let server = self.server.get_or_insert(Server::default());
-        server.port = port;
+        server.http.port = port;
         self
     }
 
@@ -125,13 +125,29 @@ impl Default for General {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Server {
-    pub port: u16,
-    pub allow_origin: Option<Vec<String>>,
+    pub http: HTTP,
 }
 
 impl Default for Server {
     fn default() -> Self {
         Server {
+            http: HTTP::default(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct HTTP {
+    pub host: String,
+    pub port: u16,
+    pub allow_origin: Option<Vec<String>>,
+}
+
+impl Default for HTTP {
+    fn default() -> Self {
+        HTTP {
+            host: "0.0.0.0".to_string(),
             port: 8989,
             allow_origin: Some(vec!["*".to_string()]),
         }
@@ -189,7 +205,7 @@ impl Default for Email {
         Email {
             incoming: IncomingEmail {
                 enabled: false,
-                mode: None,
+                mode: IncomingEmailMode::default(),
                 domain: "".to_string(),
                 token: "".to_string(),
             },
@@ -209,9 +225,23 @@ impl Default for Email {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IncomingEmail {
     pub enabled: bool,
-    pub mode: Option<String>,
+    #[serde(default)]
+    pub mode: IncomingEmailMode,
     pub domain: String,
     pub token: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum IncomingEmailMode {
+    Pipe,
+    LMTP,
+}
+
+impl Default for IncomingEmailMode {
+    fn default() -> Self {
+        IncomingEmailMode::Pipe 
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -308,40 +338,5 @@ fn default_pool_size() -> u32 {
 
 fn default_timeout_secs() -> u64 {
     5
-}
-
-
-impl Config {
-    pub fn new(path: impl AsRef<Path>) -> Self {
-
-        let path = path.as_ref();
-
-        let config_content = match fs::read_to_string(path) {
-            Ok(content) => content,
-            Err(e) => {
-                tracing::error!("Failed to read config.toml: {}", e);
-                process::exit(1);
-            }
-        };
-        
-        match toml::from_str(&config_content) {
-            Ok(config) => config,
-            Err(e) => {
-                tracing::error!("Failed to parse config.toml: {}", e);
-                process::exit(1);
-            }
-        }
-    }
-
-    pub fn validate(mut self) -> Self {
-        if self.db.url.is_empty() {
-            tracing::error!("Database URL is required");
-            process::exit(1);
-        }
-        if self.email.incoming.mode.is_none() {
-            self.email.incoming.mode = Some("pipe".to_string());
-        }
-        self
-    }
 }
 
