@@ -73,6 +73,15 @@ impl ConfigBuilder {
 
 
     pub fn build(self) -> Result<Config, anyhow::Error> {
+
+        if self.email.as_ref().unwrap().incoming.enabled {
+            if self.email.as_ref().unwrap().incoming.mode == IncomingEmailMode::LMTP {
+                if self.server.is_none() {
+                    return Err(anyhow::anyhow!("LMTP server configuration is required when using LMTP mode for incoming email"));
+                }
+            }
+        }
+
         Ok(Config {
             general: self.general.unwrap_or_default(),
             server: self.server.unwrap_or_default(),
@@ -88,6 +97,12 @@ impl ConfigBuilder {
             cache_rules: self.cache_rules.unwrap_or_default(),
             storage: self.storage.expect("Storage configuration is required"),
         })
+    }
+}
+
+impl Config {
+    pub fn lmtp_addr(&self) -> String {
+        format!("{}:{}", self.server.lmtp.clone().unwrap_or_default().host, self.server.lmtp.clone().unwrap_or_default().port)
     }
 }
 
@@ -126,12 +141,14 @@ impl Default for General {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Server {
     pub http: HTTP,
+    pub lmtp: Option<LMTP>,
 }
 
 impl Default for Server {
     fn default() -> Self {
         Server {
             http: HTTP::default(),
+            lmtp: Some(LMTP::default()),
         }
     }
 }
@@ -149,7 +166,23 @@ impl Default for HTTP {
         HTTP {
             host: "0.0.0.0".to_string(),
             port: 8989,
-            allow_origin: Some(vec!["*".to_string()]),
+            allow_origin: Some(vec!["".to_string()]),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct LMTP {
+    pub host: String,
+    pub port: u16,
+}
+
+impl Default for LMTP {
+    fn default() -> Self {
+        LMTP {
+            host: "0.0.0.0".to_string(),
+            port: 2525,
         }
     }
 }

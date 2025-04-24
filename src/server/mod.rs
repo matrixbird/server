@@ -11,6 +11,7 @@ use axum::{
     Router,
     ServiceExt
 };
+
 use serde_json::json;
 
 use std::sync::Arc;
@@ -26,7 +27,11 @@ use http::header::CONTENT_TYPE;
 
 use anyhow;
 
-use crate::config::Config;
+use crate::config::{
+    Config,
+    IncomingEmailMode,
+};
+
 use middleware::{
     authenticate_homeserver,
     authenticate_incoming_email
@@ -188,14 +193,22 @@ impl Server {
             }
         });
 
-        tokio::spawn(async {
-            let _ = lmtp::start()
-                .await
-                .unwrap_or_else(|e| {
-                    tracing::error!("Failed to start LMTP server: {}", e);
-                    std::process::exit(1);
-                });
-        });
+
+        if self.state.config.email.incoming.mode == IncomingEmailMode::LMTP {
+            tracing::info!("Incoming email mode: LMTP");
+
+            let addr = self.state.config.lmtp_addr();
+
+            tokio::spawn(async {
+                let _ = lmtp::start(addr)
+                    .await
+                    .unwrap_or_else(|e| {
+                        tracing::error!("Failed to start LMTP server: {}", e);
+                        std::process::exit(1);
+                    });
+            });
+        }
+
 
         if let Ok(listener) = tokio::net::TcpListener::bind(addr.clone()).await {
             tracing::info!("Listening on {}", addr);
