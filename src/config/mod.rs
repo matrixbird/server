@@ -2,6 +2,94 @@ use serde::{Serialize, Deserialize};
 use std::{fs, process};
 use std::path::Path;
 
+#[derive(Debug, Default)]
+pub struct ConfigBuilder {
+    general: Option<General>,
+    server: Option<Server>,
+    db: Option<DB>,
+    appservice: Option<AppService>,
+    auto_join: Option<AutoJoin>,
+    matrix: Option<Matrix>,
+    admin: Option<Admin>,
+    redis: Option<Redis>,
+    features: Option<Features>,
+    email: Option<Email>,
+    smtp: Option<SMTP>,
+    cache_rules: Option<CacheRules>,
+    storage: Option<Storage>,
+}
+
+impl ConfigBuilder {
+    pub fn new() -> Self {
+        ConfigBuilder::default()
+    }
+
+    pub fn from_file(path: impl AsRef<Path>) -> Result<Self, String> {
+        let path = path.as_ref();
+
+        let config_content = match fs::read_to_string(path) {
+            Ok(content) => content,
+            Err(e) => return Err(format!("Failed to read config file: {}", e)),
+        };
+
+        let config: Config = match toml::from_str(&config_content) {
+            Ok(config) => config,
+            Err(e) => return Err(format!("Failed to parse config file: {}", e)),
+        };
+
+        Ok(Self {
+            general: Some(config.general),
+            server: Some(config.server),
+            db: Some(config.db),
+            appservice: Some(config.appservice),
+            auto_join: Some(config.auto_join),
+            matrix: Some(config.matrix),
+            admin: Some(config.admin),
+            redis: Some(config.redis),
+            features: Some(config.features),
+            email: Some(config.email),
+            smtp: Some(config.smtp),
+            cache_rules: Some(config.cache_rules),
+            storage: Some(config.storage),
+        })
+    }
+
+    pub fn with_server(mut self, server: Server) -> Self {
+        self.server = Some(server);
+        self
+    }
+
+    pub fn with_port(mut self, port: u16) -> Self {
+        let server = self.server.get_or_insert(Server::default());
+        server.port = port;
+        self
+    }
+
+    pub fn with_mode(mut self, mode: String) -> Self {
+        let general = self.general.get_or_insert(General::default());
+        general.mode = Some(mode);
+        self
+    }
+
+
+    pub fn build(self) -> Result<Config, anyhow::Error> {
+        Ok(Config {
+            general: self.general.unwrap_or_default(),
+            server: self.server.unwrap_or_default(),
+            db: self.db.expect("Database configuration is required"),
+            appservice: self.appservice.expect("AppService configuration is required"),
+            auto_join: self.auto_join.unwrap_or_default(),
+            matrix: self.matrix.expect("Matrix configuration is required"),
+            admin: self.admin.expect("Admin configuration is required"),
+            redis: self.redis.expect("Redis configuration is required"),
+            features: self.features.unwrap_or_default(),
+            email: self.email.expect("Email configuration is required"),
+            smtp: self.smtp.expect("SMTP configuration is required"),
+            cache_rules: self.cache_rules.unwrap_or_default(),
+            storage: self.storage.expect("Storage configuration is required"),
+        })
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
@@ -26,15 +114,44 @@ pub struct General {
     pub invite_code: Option<String>,
 }
 
+impl Default for General {
+    fn default() -> Self {
+        General {
+            mode: Some("production".to_string()),
+            invite_code: None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Server {
     pub port: u16,
     pub allow_origin: Option<Vec<String>>,
 }
 
+impl Default for Server {
+    fn default() -> Self {
+        Server {
+            port: 8989,
+            allow_origin: Some(vec!["*".to_string()]),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Features {
     pub authentication: AuthenticationFeatures,
+}
+impl Default for Features {
+    fn default() -> Self {
+        Features {
+            authentication: AuthenticationFeatures {
+                registration_enabled: true,
+                require_verification: true,
+                require_invite_code: false,
+            },
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -50,6 +167,14 @@ pub struct AutoJoin {
     pub federated: bool,
 }
 
+impl Default for AutoJoin {
+    fn default() -> Self {
+        AutoJoin {
+            local: true,
+            federated: true,
+        }
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Email {
@@ -62,6 +187,7 @@ pub struct Email {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IncomingEmail {
     pub enabled: bool,
+    pub mode: Option<String>,
     pub domain: String,
     pub token: String,
 }
@@ -138,6 +264,14 @@ pub struct CacheRules {
     pub well_known: bool,
 }
 
+impl Default for CacheRules {
+    fn default() -> Self {
+        CacheRules {
+            well_known: true,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Storage {
     pub access_key_id: String,
@@ -175,6 +309,17 @@ impl Config {
                 process::exit(1);
             }
         }
+    }
+
+    pub fn validate(mut self) -> Self {
+        if self.db.url.is_empty() {
+            tracing::error!("Database URL is required");
+            process::exit(1);
+        }
+        if self.email.incoming.mode.is_none() {
+            self.email.incoming.mode = Some("pipe".to_string());
+        }
+        self
     }
 }
 

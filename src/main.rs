@@ -1,5 +1,5 @@
 use matrixbird::*; 
-use config::Config;
+use config::ConfigBuilder;
 use server::Server;
 
 use tracing::info;
@@ -16,7 +16,22 @@ async fn main() {
 
     let args = Args::build();
 
-    let config = Config::new(&args.config);
+    //let config = Config::new(&args.config)
+        //.validate();
+
+    let config = match ConfigBuilder::from_file(&args.config) {
+        Ok(builder) => match builder.build() {
+            Ok(config) => config,
+            Err(e) => {
+                eprintln!("Error building configuration: {}", e);
+                std::process::exit(1);
+            }
+        },
+        Err(e) => {
+            eprintln!("Error loading configuration: {}", e);
+            std::process::exit(1);
+        }
+    };
 
     let state = AppState::new(config.clone())
         .await
