@@ -83,7 +83,7 @@ impl ConfigBuilder {
             admin: self.admin.expect("Admin configuration is required"),
             redis: self.redis.expect("Redis configuration is required"),
             features: self.features.unwrap_or_default(),
-            email: self.email.expect("Email configuration is required"),
+            email: self.email.unwrap_or_default(),
             smtp: self.smtp.expect("SMTP configuration is required"),
             cache_rules: self.cache_rules.unwrap_or_default(),
             storage: self.storage.expect("Storage configuration is required"),
@@ -182,6 +182,28 @@ pub struct Email {
     pub outgoing: OutgoingEmail,
     pub settings: EmailSettings,
     pub domains: Option<EmailDomains>,
+}
+
+impl Default for Email {
+    fn default() -> Self {
+        Email {
+            incoming: IncomingEmail {
+                enabled: false,
+                mode: None,
+                domain: "".to_string(),
+                token: "".to_string(),
+            },
+            outgoing: OutgoingEmail {
+                enabled: false,
+                domain: "".to_string(),
+                endpoint: "".to_string(),
+            },
+            settings: EmailSettings {
+                send_welcome_emails: true,
+            },
+            domains: None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
