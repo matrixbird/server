@@ -3,7 +3,6 @@ name = "matrixbird"
 version = "0.1.0"
 authors = ["ChurchOfTheSubgenius <mail@hummingbard.com>"]
 edition = "2024"
-license = "AGPL-3.0-or-later"
 homepage = "https://matrixbird.com"
 repository = "https://github.com/matrixbird/server"
 
