@@ -202,7 +202,7 @@ impl Server {
             let lmtp_state = self.state.clone();
 
             tokio::spawn(async move {
-                let _ = lmtp::start(addr, lmtp_state)
+                lmtp::start(addr, lmtp_state)
                     .await
                     .unwrap_or_else(|e| {
                         tracing::error!("Failed to start LMTP server: {}", e);

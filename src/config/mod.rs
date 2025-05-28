@@ -74,12 +74,10 @@ impl ConfigBuilder {
 
     pub fn build(self) -> Result<Config, anyhow::Error> {
 
-        if self.email.as_ref().unwrap().incoming.enabled {
-            if self.email.as_ref().unwrap().incoming.mode == IncomingEmailMode::LMTP {
-                if self.server.is_none() {
+        if self.email.as_ref().unwrap().incoming.enabled &&
+            self.email.as_ref().unwrap().incoming.mode == IncomingEmailMode::LMTP && 
+            self.server.is_none() {
                     return Err(anyhow::anyhow!("LMTP server configuration is required when using LMTP mode for incoming email"));
-                }
-            }
         }
 
         Ok(Config {
@@ -264,17 +262,12 @@ pub struct IncomingEmail {
     pub token: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Default, Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum IncomingEmailMode {
+    #[default]
     Pipe,
     LMTP,
-}
-
-impl Default for IncomingEmailMode {
-    fn default() -> Self {
-        IncomingEmailMode::Pipe 
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

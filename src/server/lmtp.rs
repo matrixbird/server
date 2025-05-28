@@ -71,12 +71,12 @@ pub async fn start(
 
                 if line.starts_with("LHLO") {
                     writer.write_all(b"250-localhost\r\n250-PIPELINING\r\n250 ENHANCEDSTATUSCODES\r\n").await.ok()?;
-                } else if line.starts_with("MAIL FROM:") {
-                    mail_from = line["MAIL FROM:".len()..].trim().to_string();
+                } else if let Some(stripped) = line.strip_prefix("MAIL FROM:") {
+                    mail_from = stripped.trim().to_string();
                     mail_from = mail_from.trim_start_matches('<').trim_end_matches('>').to_string();
                     writer.write_all(b"250 2.1.0 OK\r\n").await.ok()?;
-                } else if line.starts_with("RCPT TO:") {
-                    rcpt_to = line["RCPT TO:".len()..].trim().to_string();
+                } else if let Some(stripped) = line.strip_prefix("RCPT TO:") {
+                    rcpt_to = stripped.trim().to_string();
                     rcpt_to = rcpt_to.trim_start_matches('<').trim_end_matches('>').to_string();
                     writer.write_all(b"250 2.1.5 OK\r\n").await.ok()?;
                 } else if line == "DATA" {

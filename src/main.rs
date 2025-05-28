@@ -16,9 +16,6 @@ async fn main() {
 
     let args = Args::build();
 
-    //let config = Config::new(&args.config)
-        //.validate();
-
     let config = match ConfigBuilder::from_file(&args.config) {
         Ok(builder) => match builder.build() {
             Ok(config) => config,
