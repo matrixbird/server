@@ -202,6 +202,11 @@ pub async fn validate_session(
         
     let session_id = auth_header.unwrap_or("");
 
+    if session_id.is_empty() {
+        return Ok(Json(json!({
+            "valid": false
+        })));
+    }
 
     /*
     //let mut access_token: String = "".to_string();
