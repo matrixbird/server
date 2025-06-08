@@ -6,8 +6,6 @@ use axum::{
 
 use chrono::{DateTime, Utc};
 
-use crate::utils::localhost_domain;
-
 use std::sync::Arc;
 
 use std::time::Duration;
@@ -31,11 +29,7 @@ pub async fn is_matrix_email(
 
     let domain = match get_email_domain(&email) {
         Ok(domain) => {
-            if state.development_mode() {
-                localhost_domain(domain.to_string())
-            } else {
                 domain.to_string()
-            }
         },
         Err(err) => {
             tracing::error!("Error: {}", err);
@@ -96,10 +90,6 @@ pub async fn validate_domain(
 
 
     let mut domain = domain.to_string();
-
-    if state.development_mode() {
-        domain = localhost_domain(domain);
-    }
 
     let valid = match query_server(state.clone(), &domain).await {
         Ok(valid) => valid,
@@ -223,13 +213,7 @@ async fn query_server(
 
     tracing::info!("querying domain: {}", domain);
 
-    let protocol = if state.development_mode() {
-        "http"
-    } else {
-        "https"
-    };
-
-    let well_known_url = format!("{}://{}/.well-known/matrix/client", protocol, domain);
+    let well_known_url = format!("https://{}/.well-known/matrix/client", domain);
 
     let well_known: WellKnown;
 
@@ -258,10 +242,6 @@ async fn query_server(
     }
 
     let mut hs = appservice.message.homeserver.to_string();
-
-    if state.development_mode() {
-        hs = localhost_domain(appservice.message.homeserver.to_string());
-    }
 
     if hs == domain {
         tracing::info!("Domain is valid");
