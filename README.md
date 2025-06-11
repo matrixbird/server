@@ -49,13 +49,10 @@ Run the appservice once with:
 $ ./target/release/matrixbird
 ```
 
-The URL of the appservice needs to be returned in the homeserver's `.well-known/matrix/client` endpoint, like so:
+The URL of this service needs to be returned in the domain's `.well-known/matrixbird/client` endpoint, like so:
 
 ```json
 {
-  "m.homeserver": {
-    "base_url": "https://matrix.example.com"
-  },
   "matrixbird.server": {
     "url": "https://appservice.example.com"
   }
