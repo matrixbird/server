@@ -89,7 +89,7 @@ pub async fn validate_domain(
 ) -> Json<Value> {
 
 
-    let mut domain = domain.to_string();
+    let domain = domain.to_string();
 
     let valid = match query_server(state.clone(), &domain).await {
         Ok(valid) => valid,
@@ -107,15 +107,8 @@ pub async fn validate_domain(
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct WellKnown {
-    #[serde(rename = "m.homeserver")]
-    pub homeserver: Homeserver,
     #[serde(rename = "matrixbird.server")]
     pub matrixbird_server: MatrixbirdServer,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Homeserver {
-    pub base_url: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -147,10 +140,10 @@ async fn fetch_well_known(
     let response = client.get(&well_known_url)
         .send()
         .await
-        .map_err(|_| anyhow::anyhow!("Failed to query homeserver .well-known endpoint: {}", well_known_url))?;
+        .map_err(|_| anyhow::anyhow!("Failed to query matrixbird server's .well-known endpoint: {}", well_known_url))?;
 
     let well_known = response.json::<WellKnown>().await
-        .map_err(|_| anyhow::anyhow!("Failed to parse homeserver .well-known response."))?;
+        .map_err(|_| anyhow::anyhow!("Failed to parse matrixbird server's .well-known response."))?;
 
     Ok(well_known)
 }
@@ -211,9 +204,9 @@ async fn query_server(
     domain: &str,
 ) -> Result<bool, anyhow::Error> {
 
-    tracing::info!("querying domain: {}", domain);
+    tracing::info!("Querying remote Matrixbird server: {}", domain);
 
-    let well_known_url = format!("https://{}/.well-known/matrix/client", domain);
+    let well_known_url = format!("https://{}/.well-known/matrixbird/server", domain);
 
     let well_known: WellKnown;
 
@@ -241,7 +234,7 @@ async fn query_server(
         return Ok(false)
     }
 
-    let mut hs = appservice.message.homeserver.to_string();
+    let hs = appservice.message.homeserver.to_string();
 
     if hs == domain {
         tracing::info!("Domain is valid");
