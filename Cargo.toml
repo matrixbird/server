@@ -13,7 +13,7 @@ anyhow = "1.0.98"
 async-trait = "0.1.86"
 aws-config = { version = "1.6.1", features = ["behavior-version-latest"] }
 aws-sdk-s3 = "1.82.0"
-axum = { version = "0.8.3", features = ["macros", "multipart"] }
+axum = { version = "0.8.4", features = ["macros", "multipart"] }
 axum-extra = { version = "0.10.1", features = ["typed-header"] }
 base64 = "0.22.1"
 bcrypt = "0.17.0"
@@ -36,15 +36,15 @@ rand = "0.9.0"
 rand_core = { version = "0.6.4", features = ["std"] }
 redis = { version = "0.27.5", features = ["tokio-comp"] }
 regex = "1.11.1"
-reqwest = { version = "0.12.9", features = ["json"] }
+reqwest = { version = "0.12.20", features = ["json"] }
 ring = "0.17.12"
-ruma = { version = "0.12.2", features = ["appservice-api-c", "client-hyper-native-tls", "client-api-c", "client-ext-client-api", "rand"] }
-serde = { version = "1.0.215", features = ["derive"] }
-serde_json = "1.0.133"
-sqlx = { version = "0.8.3", features = ["runtime-tokio", "postgres", "time", "chrono", "tls-native-tls"] }
+ruma = { version = "0.12.3", features = ["appservice-api-c", "client-hyper-native-tls", "client-api-c", "client-ext-client-api", "rand"] }
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.140"
+sqlx = { version = "0.8.6", features = ["runtime-tokio", "postgres", "time", "chrono", "tls-native-tls"] }
 tera = "1.20.0"
 thiserror = "2.0.3"
-tokio = { version = "1.44.2", features = ["full"] }
+tokio = { version = "1.45.1", features = ["full"] }
 toml = "0.8.19"
 tower = "0.5.2"
 tower-http = { version = "0.6.2", features = ["cors", "normalize-path", "trace"] }
