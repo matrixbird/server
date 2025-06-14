@@ -89,13 +89,15 @@ pub async fn login(
     if let Ok((id, session)) = state.session.create_session(
         resp.user_id.to_string(),
         resp.access_token,
-        Some(resp.device_id.clone())
+        Some(resp.device_id.clone()),
+        resp.user_id.server_name().to_string()
     ).await{
 
         return Ok(Json(json!({
             "session_id": id,
             "access_token": session.access_token,
             "device_id": session.device_id,
+            "home_server": session.home_server,
             "user_id": session.user_id,
         })));
         
@@ -153,13 +155,15 @@ pub async fn login_after_password_reset(
     if let Ok((id, session)) = state.session.create_session(
         resp.user_id.to_string(),
         resp.access_token,
-        Some(resp.device_id.clone())
+        Some(resp.device_id.clone()),
+        resp.user_id.server_name().to_string()
     ).await{
 
         return Ok(Json(json!({
             "session_id": id,
             "access_token": session.access_token,
             "device_id": session.device_id,
+            "home_server": session.home_server,
             "user_id": session.user_id,
         })));
         
