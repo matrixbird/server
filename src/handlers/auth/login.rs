@@ -90,14 +90,14 @@ pub async fn login(
         resp.user_id.to_string(),
         resp.access_token,
         Some(resp.device_id.clone()),
-        resp.user_id.server_name().to_string()
     ).await{
 
         return Ok(Json(json!({
             "session_id": id,
             "access_token": session.access_token,
             "device_id": session.device_id,
-            "home_server": session.home_server,
+            "home_server": state.config.matrix.homeserver.clone(),
+            "server_name": state.config.matrix.server_name.clone(),
             "user_id": session.user_id,
         })));
         
@@ -156,14 +156,14 @@ pub async fn login_after_password_reset(
         resp.user_id.to_string(),
         resp.access_token,
         Some(resp.device_id.clone()),
-        resp.user_id.server_name().to_string()
     ).await{
 
         return Ok(Json(json!({
             "session_id": id,
             "access_token": session.access_token,
             "device_id": session.device_id,
-            "home_server": session.home_server,
+            "home_server": state.config.matrix.homeserver.clone(),
+            "server_name": state.config.matrix.server_name.clone(),
             "user_id": session.user_id,
         })));
         

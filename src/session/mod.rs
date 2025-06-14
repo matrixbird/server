@@ -25,11 +25,11 @@ impl SessionStore {
         Ok(Self { client, ttl })
     }
 
-    pub async fn create_session(&self, user_id: String, access_token: String, device_id: Option<OwnedDeviceId>, home_server: String) -> Result<(String, Session), anyhow::Error> {
+    pub async fn create_session(&self, user_id: String, access_token: String, device_id: Option<OwnedDeviceId>) -> Result<(String, Session), anyhow::Error> {
 
         let mut conn = self.client.get_multiplexed_async_connection().await?;
         let session_id = Uuid::new_v4().to_string();
-        let session = Session::new(user_id, access_token, device_id, home_server);
+        let session = Session::new(user_id, access_token, device_id);
         
         let serialized = serde_json::to_string(&session)?;
 
@@ -176,19 +176,17 @@ pub struct Session {
     pub user_id: String,
     pub access_token: String,
     pub device_id: Option<OwnedDeviceId>,
-    pub home_server: String,
     pub created_at: i64,
     pub last_access: i64,
 }
 
 impl Session {
-    fn new(user_id: String, access_token: String, device_id: Option<OwnedDeviceId>, home_server: String) -> Self {
+    fn new(user_id: String, access_token: String, device_id: Option<OwnedDeviceId>) -> Self {
         let now = chrono::Utc::now().timestamp();
         Self {
             user_id,
             access_token,
             device_id,
-            home_server,
             created_at: now,
             last_access: now,
         }

@@ -160,8 +160,7 @@ pub async fn signup(
         if let Ok((id, _)) = state.session.create_session(
             resp.user_id.to_string(),
             access_token,
-            resp.device_id.clone(),
-            resp.user_id.server_name().to_string()
+            resp.device_id.clone()
         ).await{
 
             return Ok(Json(json!({
@@ -169,7 +168,8 @@ pub async fn signup(
                 "user_id": resp.user_id,
                 "access_token": resp.access_token,
                 "device_id": resp.device_id,
-                "home_server": resp.user_id.server_name(),
+                "home_server": state.config.matrix.homeserver.clone(),
+                "server_name": state.config.matrix.server_name.clone(),
             })));
             
         };
