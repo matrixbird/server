@@ -125,6 +125,7 @@ struct SignedMessage {
 #[derive(Serialize, Deserialize, Debug)]
 struct Message {
     pub homeserver: String,
+    pub server_name: String,
     pub timestamp: DateTime<Utc>,
 }
 
@@ -234,7 +235,7 @@ async fn query_server(
         return Ok(false)
     }
 
-    let hs = appservice.message.homeserver.to_string();
+    let hs = appservice.message.server_name.to_string();
 
     if hs == domain {
         tracing::info!("Domain is valid");
@@ -270,7 +271,8 @@ pub async fn homeserver(
 ) -> Result<impl IntoResponse, ()> {
 
     let payload = json!({
-        "homeserver": state.config.matrix.server_name,
+        "homeserver": state.config.matrix.homeserver,
+        "server_name": state.config.matrix.server_name,
         "timestamp": chrono::Utc::now()
     });
 
