@@ -2,6 +2,10 @@
 mode = "development"
 invite_code = ""
 
+[encryption]
+secret = "your-secret-key-here"
+salt = "your-salt-here"
+
 [server.http]
 port = 8989
 allow_origin = [""]
