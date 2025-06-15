@@ -2,6 +2,7 @@ pub mod config;
 pub mod appservice;
 pub mod db;
 pub mod server;
+pub mod auth;
 pub mod ping;
 pub mod crypto;
 pub mod api;
@@ -40,6 +41,7 @@ pub struct AppState {
     pub email_providers: email::EmailProviders,
     pub templates: templates::EmailTemplates,
     pub keys: crypto::Keys,
+    pub auth: auth::AuthService,
     pub admin: admin::Admin,
 }
 
@@ -68,6 +70,8 @@ impl AppState {
         let providers = email::EmailProviders::new("data/providers.json")?;
 
         let keys = crypto::Keys::new(&config)?;
+
+        let auth = auth::AuthService::new(&config).await?;
 
         let mode = match &config.general.mode {
             Some(mode) => {
@@ -98,6 +102,7 @@ impl AppState {
             email_providers: providers,
             templates,
             keys,
+            auth,
             admin,
         });
 

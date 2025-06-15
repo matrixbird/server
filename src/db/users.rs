@@ -13,7 +13,7 @@ impl UserQueries {
     }
 
     pub async fn exists(&self, user_id: &str) -> Result<bool, anyhow::Error>{
-        let row = sqlx::query("SELECT EXISTS(SELECT 1 FROM users WHERE user_id = $1 and active = true)")
+        let row = sqlx::query("SELECT EXISTS(SELECT 1 FROM users WHERE user_id = $1 and status != 'deleted)")
             .bind(user_id)
             .fetch_one(&self.pool)
             .await?;
@@ -33,7 +33,7 @@ impl UserQueries {
     }
 
     pub async fn local_part_exists(&self, local_part: &str) -> Result<bool, anyhow::Error>{
-        let row = sqlx::query("SELECT EXISTS(SELECT 1 FROM users WHERE local_part = $1 and active = true)")
+        let row = sqlx::query("SELECT EXISTS(SELECT 1 FROM users WHERE local_part = $1 and status != 'deleted)")
             .bind(local_part)
             .fetch_one(&self.pool)
             .await?;

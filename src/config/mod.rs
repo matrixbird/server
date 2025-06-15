@@ -5,6 +5,7 @@ use std::path::Path;
 #[derive(Debug, Default)]
 pub struct ConfigBuilder {
     general: Option<General>,
+    encryption: Option<Encryption>,
     server: Option<Server>,
     db: Option<DB>,
     appservice: Option<AppService>,
@@ -39,6 +40,7 @@ impl ConfigBuilder {
 
         Ok(Self {
             general: Some(config.general),
+            encryption: Some(config.encryption),
             server: Some(config.server),
             db: Some(config.db),
             appservice: Some(config.appservice),
@@ -82,6 +84,7 @@ impl ConfigBuilder {
 
         Ok(Config {
             general: self.general.unwrap_or_default(),
+            encryption: self.encryption.expect("Encryption configuration is required"),
             server: self.server.unwrap_or_default(),
             db: self.db.expect("Database configuration is required"),
             appservice: self.appservice.expect("AppService configuration is required"),
@@ -107,6 +110,7 @@ impl Config {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     pub general: General,
+    pub encryption: Encryption,
     pub server: Server,
     pub db: DB,
     pub appservice: AppService,
@@ -134,6 +138,12 @@ impl Default for General {
             invite_code: None,
         }
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Encryption {
+    pub secret: String,
+    pub salt: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
