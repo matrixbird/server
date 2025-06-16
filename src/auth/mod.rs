@@ -33,6 +33,24 @@ impl AuthService {
             client
         })
     }
+
+    pub fn generate_matrix_password(&self, length: usize) -> Result<String, EncryptionError> {
+        self.crypto.generate_matrix_password(length)
+    }
+    
+    pub fn encrypt_matrix_password(
+        &self,
+        password: &str,
+    ) -> Result<EncryptedData, EncryptionError> {
+        self.crypto.encrypt_matrix_password(password, &self.encryption_key)
+    }
+
+    pub fn decrypt_matrix_password(
+        &self,
+        encrypted_data: &EncryptedData,
+    ) -> Result<String, EncryptionError> {
+        self.crypto.decrypt_matrix_password(encrypted_data, &self.encryption_key)
+    }
 }
 
 #[derive(Error, Debug)]
