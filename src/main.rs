@@ -12,11 +12,28 @@ use crate::AppState;
 #[tokio::main]
 async fn main() {
 
-    let _logging_guard = setup_tracing();
-
     let args = Args::build();
 
-    let config = match ConfigBuilder::from_file(&args.config) {
+    match args.command {
+        Some(Command::SendEmails { dry_run }) => {
+            println!("Sending test emails... {}", dry_run);
+        }
+        Some(Command::Migrate) => {
+            println!("Running database migrations...");
+        }
+        None => {
+            start(args).await;
+        }
+    }
+
+
+}
+
+pub async fn start(args: Args) {
+
+    let _logging_guard = setup_tracing();
+
+    let config = match ConfigBuilder::from_file(args.config) {
         Ok(builder) => match builder.build() {
             Ok(config) => config,
             Err(e) => {
@@ -37,27 +54,15 @@ async fn main() {
             std::process::exit(1);
         });
 
-    match args.command {
-        Some(Command::SendEmails { dry_run }) => {
-            println!("Sending test emails... {}", dry_run);
-        }
-        Some(Command::Migrate) => {
-            println!("Running database migrations...");
-        }
-        None => {
-            info!("Starting Matrixbird server...");
+    info!("Starting Matrixbird server...");
 
-            Server::new(state)
-            .run()
-            .await 
-            .unwrap_or_else(|e| {
-                eprintln!("Server error: {}", e);
-                std::process::exit(1);
-            }); 
-        }
-    }
-
-
+    Server::new(state)
+    .run()
+    .await 
+    .unwrap_or_else(|e| {
+        eprintln!("Server error: {}", e);
+        std::process::exit(1);
+    }); 
 }
 
 pub fn setup_tracing() -> WorkerGuard {
