@@ -1,3 +1,5 @@
+mod generate;
+
 use serde::{Serialize, Deserialize};
 use std::fs;
 use std::path::Path;

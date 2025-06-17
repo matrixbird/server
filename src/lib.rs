@@ -147,13 +147,18 @@ pub struct Args {
 
 #[derive(Subcommand)]
 pub enum Command {
-    /// Send test emails
-    SendEmails {
-        #[arg(long)]
-        dry_run: bool,
+    Config {
+        #[command(subcommand)]
+        command: ConfigCommands,
     },
-    /// Run database migrations
-    Migrate,
+}
+
+#[derive(Subcommand)]
+pub enum ConfigCommands {
+    Generate {
+        #[arg(index = 1, value_name = "FILENAME")]
+        filename: Option<String>,
+    },
 }
 
 impl Args {

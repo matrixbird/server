@@ -1,5 +1,5 @@
 use matrixbird::*; 
-use config::ConfigBuilder;
+use config::{ConfigBuilder, Config};
 use server::Server;
 
 use tracing::info;
@@ -15,12 +15,16 @@ async fn main() {
     let args = Args::build();
 
     match args.command {
-        Some(Command::SendEmails { dry_run }) => {
-            println!("Sending test emails... {}", dry_run);
-        }
-        Some(Command::Migrate) => {
-            println!("Running database migrations...");
-        }
+        Some(Command::Config { command }) => {
+            match command {
+                ConfigCommands::Generate { filename } => {
+                    let output = filename
+                        .unwrap_or_else(|| "config.toml".to_string());
+
+                    Config::generate(output);
+                }
+            }
+        },
         None => {
             start(args).await;
         }
