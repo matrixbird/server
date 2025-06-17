@@ -9,9 +9,12 @@ use crate::config::Config;
 
 use crate::appservice::HttpClient;
 
+use crate::utils::construct_matrix_id;
+
 use ruma::api::client::{
     account::register,
-    uiaa::{Dummy, AuthData}
+    session::login,
+    uiaa::{Dummy, AuthData, UserIdentifier}
 };
 
 
@@ -20,10 +23,13 @@ pub struct AuthService {
     crypto: MatrixPasswordCrypto,
     encryption_key: EncryptionKey,
     client: ruma::Client<HttpClient>,
+    config: Config,
 }
 
 impl AuthService {
     pub async fn new(config: &Config) -> Result<Self, anyhow::Error> {
+
+        let config = config.clone();
 
         let crypto = MatrixPasswordCrypto::new();
         let encryption_key = EncryptionKey::new(&config.encryption.secret, None)?;
@@ -36,7 +42,8 @@ impl AuthService {
         Ok(Self {
             crypto,
             encryption_key,
-            client
+            client,
+            config,
         })
     }
 
@@ -76,6 +83,32 @@ impl AuthService {
 
         let response = self.client
             .send_request(req)
+            .await?;
+
+        Ok(response)
+    }
+
+    pub async fn login(
+        &self,
+        user: &str,
+        password: &str,
+    ) -> Result<login::v3::Response, anyhow::Error> {
+
+        let user_id = match construct_matrix_id(user, &self.config.matrix.server_name) {
+            Some(id) => id,
+            None => {
+                println!("Invalid input");
+                return Err(anyhow::anyhow!("Invalid input"));
+            }
+        };
+
+        let id = UserIdentifier::UserIdOrLocalpart(user_id);
+
+        let pass = login::v3::Password::new(id, password.to_string());
+        let info = login::v3::LoginInfo::Password(pass);
+
+        let response = self.client
+            .send_request(login::v3::Request::new(info))
             .await?;
 
         Ok(response)
