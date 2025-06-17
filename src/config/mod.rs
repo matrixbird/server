@@ -6,6 +6,7 @@ use std::path::Path;
 pub struct ConfigBuilder {
     general: Option<General>,
     encryption: Option<Encryption>,
+    authentication: Option<Authentication>,
     server: Option<Server>,
     db: Option<DB>,
     appservice: Option<AppService>,
@@ -41,6 +42,7 @@ impl ConfigBuilder {
         Ok(Self {
             general: Some(config.general),
             encryption: Some(config.encryption),
+            authentication: Some(config.authentication),
             server: Some(config.server),
             db: Some(config.db),
             appservice: Some(config.appservice),
@@ -85,6 +87,7 @@ impl ConfigBuilder {
         Ok(Config {
             general: self.general.unwrap_or_default(),
             encryption: self.encryption.expect("Encryption configuration is required"),
+            authentication: self.authentication.unwrap_or_default(),
             server: self.server.unwrap_or_default(),
             db: self.db.expect("Database configuration is required"),
             appservice: self.appservice.expect("AppService configuration is required"),
@@ -111,6 +114,7 @@ impl Config {
 pub struct Config {
     pub general: General,
     pub encryption: Encryption,
+    pub authentication: Authentication,
     pub server: Server,
     pub db: DB,
     pub appservice: AppService,
@@ -140,11 +144,6 @@ impl Default for General {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Encryption {
-    pub secret: String,
-    pub salt: String,
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Server {
@@ -331,6 +330,26 @@ pub struct Admin {
     pub user: String,
     pub password: String,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Encryption {
+    pub secret: String,
+    pub salt: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Authentication {
+    pub generate_matrix_passwords: bool,
+}
+
+impl Default for Authentication {
+    fn default() -> Self {
+        Authentication {
+            generate_matrix_passwords: false,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Redis {
     pub session: RedisDB,

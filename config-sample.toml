@@ -2,10 +2,6 @@
 mode = "development"
 invite_code = ""
 
-[encryption]
-secret = "your-secret-key-here"
-salt = "your-salt-here"
-
 [server.http]
 port = 8989
 allow_origin = [""]
@@ -27,6 +23,13 @@ server_name = "localhost:8480"
 [admin]
 user = "matrixbird_admin"
 password = "strong-password"
+
+[encryption]
+secret = "your-secret-key-here"
+salt = "your-salt-here"
+
+[authentication]
+generate_matrix_passwords = false
 
 [auto_join]
 local = true
