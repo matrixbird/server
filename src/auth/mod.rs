@@ -9,6 +9,12 @@ use crate::config::Config;
 
 use crate::appservice::HttpClient;
 
+use ruma::api::client::{
+    account::register,
+    uiaa::{Dummy, AuthData}
+};
+
+
 #[derive(Debug, Clone)]
 pub struct AuthService {
     crypto: MatrixPasswordCrypto,
@@ -51,6 +57,30 @@ impl AuthService {
     ) -> Result<String, EncryptionError> {
         self.crypto.decrypt_matrix_password(encrypted_data, &self.encryption_key)
     }
+
+
+    pub async fn create_user(
+        &self,
+        username: &str,
+        password: &str,
+    ) -> Result<register::v3::Response, anyhow::Error> {
+
+        let mut req = register::v3::Request::new();
+
+        req.username = Some(username.to_string().to_lowercase());
+        req.password = Some(password.to_string());
+
+        let dum = Dummy::new();
+        let authdata = AuthData::Dummy(dum);
+        req.auth = Some(authdata);
+
+        let response = self.client
+            .send_request(req)
+            .await?;
+
+        Ok(response)
+    }
+
 }
 
 #[derive(Error, Debug)]
