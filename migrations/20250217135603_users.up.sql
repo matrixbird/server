@@ -11,6 +11,7 @@ CREATE TABLE users (
     id SERIAL PRIMARY KEY,
     user_id TEXT NOT NULL UNIQUE, -- Matrix ID
     local_part TEXT NOT NULL UNIQUE, 
+    password TEXT,
     email TEXT UNIQUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
 
