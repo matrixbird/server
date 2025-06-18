@@ -15,13 +15,6 @@ use crate::error::AppserviceError;
 
 use crate::tasks;
 
-use ruma::api::client::{
-    account::register,
-    uiaa::{Dummy, AuthData}
-};
-
-use crate::appservice::HttpClient;
-
 #[derive(Debug, Deserialize)]
 pub struct SignupRequest {
     pub username: String,
@@ -82,28 +75,11 @@ pub async fn signup(
 
     }
 
-
-    let client = ruma::Client::builder()
-        .homeserver_url(state.config.matrix.homeserver.clone())
-        .build::<HttpClient>()
-        .await
+    let resp = state.auth.create_user(
+        &payload.username,
+        &payload.password
+    ).await
         .map_err(|e| AppserviceError::HomeserverError(e.to_string()))?;
-
-    let mut req = register::v3::Request::new();
-
-    req.username = Some(payload.username.clone().to_lowercase());
-    req.password = Some(payload.password.clone());
-
-    let dum = Dummy::new();
-
-    let authdata = AuthData::Dummy(dum);
-
-    req.auth = Some(authdata);
-
-    let resp = client
-        .send_request(req)
-        .await
-    .map_err(|e| AppserviceError::HomeserverError(e.to_string()))?;
 
     println!("register response: {:?}", resp);
 
